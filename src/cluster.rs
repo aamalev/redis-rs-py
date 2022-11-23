@@ -1,7 +1,10 @@
-use deadpool_redis_cluster::{Config, Pool, Runtime};
+use deadpool_redis_cluster::{
+    redis::{aio::ConnectionLike, Value},
+    Config, Pool, Runtime,
+};
 use pyo3::{
     prelude::*,
-    types::{PyBytes, PyDict},
+    types::{PyBytes, PyDict, PyList},
 };
 use pyo3_asyncio::tokio::future_into_py;
 use redis_cluster_async::redis::FromRedisValue;
@@ -25,6 +28,19 @@ async fn execute<T: FromRedisValue>(
     Ok(result)
 }
 
+fn to_object(py: Python, value: Value) -> PyObject {
+    match value {
+        Value::Data(d) => PyBytes::new(py, &d).to_object(py),
+        Value::Nil => py.None(),
+        Value::Int(i) => i.to_object(py),
+        Value::Bulk(bulk) => {
+            PyList::new(py, bulk.into_iter().map(|v| to_object(py, v))).to_object(py)
+        }
+        Value::Status(s) => s.to_object(py),
+        Value::Okay => true.to_object(py),
+    }
+}
+
 #[pymethods]
 impl Client {
     #[new]
@@ -36,6 +52,19 @@ impl Client {
         pool.resize(max_size);
         let pool = Arc::new(pool);
         Self { pool }
+    }
+
+    #[args(args = "*")]
+    fn execute<'a>(&self, py: Python<'a>, cmd: String, args: Vec<Vec<u8>>) -> PyResult<&'a PyAny> {
+        let pool = self.pool.clone();
+        future_into_py(py, async move {
+            let mut conn = pool.get().await.unwrap();
+            let value = conn
+                .req_packed_command(redis_cluster_async::redis::cmd(&cmd).arg(&args))
+                .await
+                .unwrap();
+            Ok(Python::with_gil(|py| to_object(py, value)))
+        })
     }
 
     #[args(args = "*")]
@@ -62,7 +91,9 @@ impl Client {
         let pool = self.pool.clone();
         future_into_py(py, async move {
             let result: Vec<u8> = execute(pool, cmd, args).await.expect("RedisError");
-            Python::with_gil(|py| Ok(PyBytes::new(py, &result).to_object(py)))
+            Ok(Python::with_gil(|py| {
+                PyBytes::new(py, &result).to_object(py)
+            }))
         })
     }
 
@@ -95,6 +126,26 @@ impl Client {
                 for (k, v) in map.into_iter() {
                     let val = PyBytes::new(py, &v);
                     result.set_item(k, val).unwrap();
+                }
+                result.to_object(py)
+            }))
+        })
+    }
+
+    #[args(args = "*")]
+    fn fetch_scores<'a>(
+        &self,
+        py: Python<'a>,
+        cmd: String,
+        args: Vec<Vec<u8>>,
+    ) -> PyResult<&'a PyAny> {
+        let pool = self.pool.clone();
+        future_into_py(py, async move {
+            let map: HashMap<String, f64> = execute(pool, cmd, args).await.expect("RedisError");
+            Ok(Python::with_gil(|py| {
+                let result = PyDict::new(py);
+                for (k, v) in map.into_iter() {
+                    result.set_item(k, v).unwrap();
                 }
                 result.to_object(py)
             }))

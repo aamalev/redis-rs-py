@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  release:
+    types: [created]
   push:
     branches:
       - main
@@ -55,6 +57,9 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    environment:
+      name: PyPI
+      url: https://pypi.org/project/redis-rs/${{ github.ref_name }}
     if: "startsWith(github.ref, 'refs/tags/')"
     needs: [ macos, windows, linux ]
     steps:
