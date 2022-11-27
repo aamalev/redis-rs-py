@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 mod cluster;
+mod types;
 
 #[pyfunction]
 fn create_client(initial_nodes: Vec<String>, max_size: usize) -> PyResult<cluster::Client> {

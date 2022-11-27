@@ -1,3 +1,4 @@
+use crate::types;
 use deadpool_redis_cluster::{
     redis::{aio::ConnectionLike, Value},
     Config, Pool, Runtime,
@@ -17,11 +18,11 @@ pub struct Client {
 
 async fn execute<T: FromRedisValue>(
     pool: Arc<Pool>,
-    cmd: String,
-    args: Vec<Vec<u8>>,
+    cmd: types::Cmd,
+    args: Vec<types::Arg>,
 ) -> Result<T, Box<dyn std::error::Error>> {
     let mut conn = pool.get().await?;
-    let result: T = redis_cluster_async::redis::cmd(&cmd)
+    let result: T = redis_cluster_async::redis::cmd(&cmd.to_string())
         .arg(&args)
         .query_async(&mut conn)
         .await?;
@@ -55,12 +56,17 @@ impl Client {
     }
 
     #[args(args = "*")]
-    fn execute<'a>(&self, py: Python<'a>, cmd: String, args: Vec<Vec<u8>>) -> PyResult<&'a PyAny> {
+    fn execute<'a>(
+        &self,
+        py: Python<'a>,
+        cmd: types::Cmd,
+        args: Vec<types::Arg>,
+    ) -> PyResult<&'a PyAny> {
         let pool = self.pool.clone();
         future_into_py(py, async move {
             let mut conn = pool.get().await.unwrap();
             let value = conn
-                .req_packed_command(redis_cluster_async::redis::cmd(&cmd).arg(&args))
+                .req_packed_command(&redis_cluster_async::redis::cmd(&cmd.to_string()).arg(&args))
                 .await
                 .unwrap();
             Ok(Python::with_gil(|py| to_object(py, value)))
@@ -71,8 +77,8 @@ impl Client {
     fn fetch_str<'a>(
         &self,
         py: Python<'a>,
-        cmd: String,
-        args: Vec<Vec<u8>>,
+        cmd: types::Cmd,
+        args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
         let pool = self.pool.clone();
         future_into_py(py, async move {
@@ -85,8 +91,8 @@ impl Client {
     fn fetch_bytes<'a>(
         &self,
         py: Python<'a>,
-        cmd: String,
-        args: Vec<Vec<u8>>,
+        cmd: types::Cmd,
+        args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
         let pool = self.pool.clone();
         future_into_py(py, async move {
@@ -101,8 +107,8 @@ impl Client {
     fn fetch_list<'a>(
         &self,
         py: Python<'a>,
-        cmd: String,
-        args: Vec<Vec<u8>>,
+        cmd: types::Cmd,
+        args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
         let pool = self.pool.clone();
         future_into_py(py, async move {
@@ -115,8 +121,8 @@ impl Client {
     fn fetch_dict<'a>(
         &self,
         py: Python<'a>,
-        cmd: String,
-        args: Vec<Vec<u8>>,
+        cmd: types::Cmd,
+        args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
         let pool = self.pool.clone();
         future_into_py(py, async move {
@@ -136,8 +142,8 @@ impl Client {
     fn fetch_scores<'a>(
         &self,
         py: Python<'a>,
-        cmd: String,
-        args: Vec<Vec<u8>>,
+        cmd: types::Cmd,
+        args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
         let pool = self.pool.clone();
         future_into_py(py, async move {
@@ -156,8 +162,8 @@ impl Client {
     fn fetch_int<'a>(
         &self,
         py: Python<'a>,
-        cmd: String,
-        args: Vec<Vec<u8>>,
+        cmd: types::Cmd,
+        args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
         let pool = self.pool.clone();
         future_into_py(py, async move {
