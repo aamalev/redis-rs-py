@@ -5,8 +5,23 @@ build-backend = "maturin"
 [project]
 name = "redis-rs"
 requires-python = ">=3.7"
+description = "Python wrapper for redis-rs and redis_cluster_async"
+authors = [
+    { name = "Alexander Malev", email = "yttrium@somedev.ru" },
+]
+keywords = [
+    "redis",
+    "redis-cluster",
+    "redis-rs",
+]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
+
+[project.urls]
+Homepage = "https://github.com/aamalev/redis-rs-py"
+Documentation = "https://github.com/aamalev/redis-rs-py#using"
+Issues = "https://github.com/aamalev/redis-rs-py/issues"
+Source = "hhttps://github.com/aamalev/redis-rs-py"
