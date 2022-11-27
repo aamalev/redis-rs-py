@@ -12,7 +12,7 @@ authors = [
 keywords = [
     "redis",
     "redis-cluster",
-    "redis-rs",
+    "rust",
 ]
 classifiers = [
     "Programming Language :: Rust",
@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aamalev/redis-rs-py"
-Documentation = "https://github.com/aamalev/redis-rs-py#using"
-Issues = "https://github.com/aamalev/redis-rs-py/issues"
-Source = "hhttps://github.com/aamalev/redis-rs-py"
+homepage = "https://github.com/aamalev/redis-rs-py"
+documentation = "https://github.com/aamalev/redis-rs-py#using"
+repository = "hhttps://github.com/aamalev/redis-rs-py"
+changelog = "https://github.com/aamalev/redis-rs-py/releases"
