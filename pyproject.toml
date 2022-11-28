@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 [project.urls]
-homepage = "https://github.com/aamalev/redis-rs-py"
-documentation = "https://github.com/aamalev/redis-rs-py#using"
-repository = "hhttps://github.com/aamalev/redis-rs-py"
-changelog = "https://github.com/aamalev/redis-rs-py/releases"
+"Source Code" = "https://github.com/aamalev/redis-rs-py"
+Issues = "https://github.com/aamalev/redis-rs-py/issues"
+Documentation = "https://github.com/aamalev/redis-rs-py#using"
+Changelog = "https://github.com/aamalev/redis-rs-py/releases"
