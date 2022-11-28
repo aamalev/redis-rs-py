@@ -1,11 +1,8 @@
 use crate::types;
-use deadpool_redis_cluster::{
-    redis::{aio::ConnectionLike, Value},
-    Config, Pool, Runtime,
-};
+use deadpool_redis_cluster::{redis::aio::ConnectionLike, Config, Pool, Runtime};
 use pyo3::{
     prelude::*,
-    types::{PyBytes, PyDict, PyList},
+    types::{PyBytes, PyDict},
 };
 use pyo3_asyncio::tokio::future_into_py;
 use redis_cluster_async::redis::FromRedisValue;
@@ -27,19 +24,6 @@ async fn execute<T: FromRedisValue>(
         .query_async(&mut conn)
         .await?;
     Ok(result)
-}
-
-fn to_object(py: Python, value: Value) -> PyObject {
-    match value {
-        Value::Data(d) => PyBytes::new(py, &d).to_object(py),
-        Value::Nil => py.None(),
-        Value::Int(i) => i.to_object(py),
-        Value::Bulk(bulk) => {
-            PyList::new(py, bulk.into_iter().map(|v| to_object(py, v))).to_object(py)
-        }
-        Value::Status(s) => s.to_object(py),
-        Value::Okay => true.to_object(py),
-    }
 }
 
 #[pymethods]
@@ -69,7 +53,7 @@ impl Client {
                 .req_packed_command(&redis_cluster_async::redis::cmd(&cmd.to_string()).arg(&args))
                 .await
                 .unwrap();
-            Ok(Python::with_gil(|py| to_object(py, value)))
+            Ok(Python::with_gil(|py| types::to_object(py, value)))
         })
     }
 

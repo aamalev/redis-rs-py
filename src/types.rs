@@ -1,5 +1,21 @@
-use deadpool_redis_cluster::redis::{RedisWrite, ToRedisArgs};
-use pyo3::FromPyObject;
+use deadpool_redis_cluster::redis::{RedisWrite, ToRedisArgs, Value};
+use pyo3::{
+    types::{PyBytes, PyList},
+    FromPyObject, PyObject, Python, ToPyObject,
+};
+
+pub fn to_object(py: Python, value: Value) -> PyObject {
+    match value {
+        Value::Data(d) => PyBytes::new(py, &d).to_object(py),
+        Value::Nil => py.None(),
+        Value::Int(i) => i.to_object(py),
+        Value::Bulk(bulk) => {
+            PyList::new(py, bulk.into_iter().map(|v| to_object(py, v))).to_object(py)
+        }
+        Value::Status(s) => s.to_object(py),
+        Value::Okay => true.to_object(py),
+    }
+}
 
 #[derive(FromPyObject)]
 pub enum Cmd {
