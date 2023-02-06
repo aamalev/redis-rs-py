@@ -11,5 +11,5 @@ crate-type = ["cdylib"]
 [dependencies]
 deadpool-redis-cluster = { git = "https://github.com/bikeshedder/deadpool", version = "0.1.0" }
 pyo3 = { version = "0.17.3", features = ["extension-module"] }
-pyo3-asyncio = { version = "0.17.0", features = ["tokio-runtime"] }
+pyo3-asyncio = { version = "0.18.0", features = ["tokio-runtime"] }
 redis_cluster_async = "0.7.0"
