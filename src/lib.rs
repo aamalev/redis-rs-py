@@ -1,14 +1,13 @@
 use pyo3::prelude::*;
 mod bb8_cluster;
+mod bb8_single;
 mod client;
 mod cluster;
 mod deadpool_cluster;
 mod error;
 mod exceptions;
 mod pool;
-mod bb8_single;
 mod types;
-
 
 #[pyfunction]
 #[pyo3(signature = (*initial_nodes, max_size, cluster))]

@@ -1,10 +1,10 @@
 use crate::{
     bb8_cluster::BB8Cluster,
+    bb8_single::BB8Pool,
     cluster::Cluster,
     deadpool_cluster::DeadPoolCluster,
     error,
     pool::{ClosedPool, Connection, Pool},
-    bb8_single::BB8Pool,
     types,
 };
 use pyo3::{
