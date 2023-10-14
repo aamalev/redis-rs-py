@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "redis-rs"
 requires-python = ">=3.7"
-description = "Python wrapper for redis-rs and redis_cluster_async"
+description = "Python wrapper for redis-rs"
 authors = [
     { name = "Alexander Malev", email = "yttrium@somedev.ru" },
 ]
@@ -33,3 +33,20 @@ classifiers = [
 Issues = "https://github.com/aamalev/redis-rs-py/issues"
 Documentation = "https://github.com/aamalev/redis-rs-py#using"
 Changelog = "https://github.com/aamalev/redis-rs-py/releases"
+
+[tool.hatch.envs.default]
+dependencies = [
+    "maturin",
+]
+
+[tool.hatch.envs.default.scripts]
+build = [
+    "maturin develop",
+]
+check = [
+    "cargo clippy",
+    "build",
+]
+fmt = [
+    "cargo fmt",
+]

@@ -1,6 +1,6 @@
 # redis-rs
 
-Python wrapper for redis-rs and redis_cluster_async
+Python wrapper for redis-rs, bb8, bb8-redis, bb8-redis-cluster, deadpool-redis-cluster, redis_cluster_async
 
 # Install
 
@@ -18,6 +18,7 @@ async def main():
         "redis://redis-node001",
         "redis://redis-node002",
         max_size=1,
+        cluster=True,
     ) as x:
         print(await x.execute(b"HSET", "fooh", "a", b"asdfg"))
         print(await x.fetch_int("HSET", "fooh", "b", 11234567890))
@@ -46,3 +47,15 @@ async def main():
 
 asyncio.run(main())
 ```
+
+# Development
+
+    cargo fmt
+    cargo clippy
+    maturin develop
+
+or use hatch envs:
+
+    hatch run fmt
+    hatch run check
+    hatch run build
