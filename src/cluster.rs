@@ -1,158 +1,46 @@
-use crate::types;
-use deadpool_redis_cluster::{redis::aio::ConnectionLike, Config, Pool, Runtime};
-use pyo3::{
-    prelude::*,
-    types::{PyBytes, PyDict},
+use std::collections::HashMap;
+
+use crate::{
+    error,
+    pool::{Connection, Pool},
+    types,
 };
-use pyo3_asyncio::tokio::future_into_py;
-use redis_cluster_async::redis::FromRedisValue;
-use std::{collections::HashMap, sync::Arc};
+use async_trait::async_trait;
+use redis::{aio::ConnectionLike, cluster::ClusterClient};
 
-#[pyclass]
-pub struct Client {
-    pool: Arc<Pool>,
+pub struct Cluster {
+    client: ClusterClient,
 }
 
-async fn execute<T: FromRedisValue>(
-    pool: Arc<Pool>,
-    cmd: types::Cmd,
-    args: Vec<types::Arg>,
-) -> Result<T, Box<dyn std::error::Error>> {
-    let mut conn = pool.get().await?;
-    let result: T = redis_cluster_async::redis::cmd(&cmd.to_string())
-        .arg(&args)
-        .query_async(&mut conn)
-        .await?;
-    Ok(result)
+impl Cluster {
+    pub fn new(initial_nodes: Vec<String>, _max_size: u32) -> Self {
+        let client = ClusterClient::new(initial_nodes).unwrap();
+        Self { client }
+    }
 }
 
-#[pymethods]
-impl Client {
-    #[new]
-    pub fn new(initial_nodes: Vec<String>, max_size: usize) -> Self {
-        let cfg = Config::from_urls(initial_nodes);
-        let pool = cfg
-            .create_pool(Some(Runtime::Tokio1))
-            .expect("Error with redis pool");
-        pool.resize(max_size);
-        let pool = Arc::new(pool);
-        Self { pool }
+#[async_trait]
+impl Pool for Cluster {
+    async fn get_connection(&self) -> Result<Connection, error::RedisError> {
+        let c = self.client.get_async_connection().await?;
+        Ok(Connection { c: Box::new(c) })
     }
 
-    #[args(args = "*")]
-    fn execute<'a>(
+    async fn execute(
         &self,
-        py: Python<'a>,
-        cmd: types::Cmd,
+        cmd: &str,
         args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let pool = self.pool.clone();
-        future_into_py(py, async move {
-            let mut conn = pool.get().await.unwrap();
-            let value = conn
-                .req_packed_command(&redis_cluster_async::redis::cmd(&cmd.to_string()).arg(&args))
-                .await
-                .unwrap();
-            Ok(Python::with_gil(|py| types::to_object(py, value)))
-        })
+    ) -> Result<redis::Value, error::RedisError> {
+        let mut conn = self.client.get_async_connection().await?;
+        let value = conn.req_packed_command(redis::cmd(cmd).arg(&args)).await?;
+        Ok(value)
     }
 
-    #[args(args = "*")]
-    fn fetch_str<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Cmd,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let pool = self.pool.clone();
-        future_into_py(py, async move {
-            let result: Option<String> = execute(pool, cmd, args).await.expect("RedisError");
-            Ok(result)
-        })
-    }
-
-    #[args(args = "*")]
-    fn fetch_bytes<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Cmd,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let pool = self.pool.clone();
-        future_into_py(py, async move {
-            let result: Vec<u8> = execute(pool, cmd, args).await.expect("RedisError");
-            Ok(Python::with_gil(|py| {
-                PyBytes::new(py, &result).to_object(py)
-            }))
-        })
-    }
-
-    #[args(args = "*")]
-    fn fetch_list<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Cmd,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let pool = self.pool.clone();
-        future_into_py(py, async move {
-            let result: Vec<String> = execute(pool, cmd, args).await.expect("RedisError");
-            Ok(result)
-        })
-    }
-
-    #[args(args = "*")]
-    fn fetch_dict<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Cmd,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let pool = self.pool.clone();
-        future_into_py(py, async move {
-            let map: HashMap<String, Vec<u8>> = execute(pool, cmd, args).await.expect("RedisError");
-            Ok(Python::with_gil(|py| {
-                let result = PyDict::new(py);
-                for (k, v) in map.into_iter() {
-                    let val = PyBytes::new(py, &v);
-                    result.set_item(k, val).unwrap();
-                }
-                result.to_object(py)
-            }))
-        })
-    }
-
-    #[args(args = "*")]
-    fn fetch_scores<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Cmd,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let pool = self.pool.clone();
-        future_into_py(py, async move {
-            let map: HashMap<String, f64> = execute(pool, cmd, args).await.expect("RedisError");
-            Ok(Python::with_gil(|py| {
-                let result = PyDict::new(py);
-                for (k, v) in map.into_iter() {
-                    result.set_item(k, v).unwrap();
-                }
-                result.to_object(py)
-            }))
-        })
-    }
-
-    #[args(args = "*")]
-    fn fetch_int<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Cmd,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let pool = self.pool.clone();
-        future_into_py(py, async move {
-            let result: usize = execute(pool, cmd, args).await.expect("RedisError");
-            Ok(result)
-        })
+    fn status(&self) -> HashMap<&str, redis::Value> {
+        let mut result = HashMap::new();
+        result.insert("closed", redis::Value::Int(0));
+        result.insert("impl", redis::Value::Data("cluster_async".into()));
+        result.insert("cluster", redis::Value::Int(1));
+        result
     }
 }

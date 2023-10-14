@@ -12,22 +12,36 @@ Python wrapper for redis-rs and redis_cluster_async
 import asyncio
 import redis_rs
 
-x = redis_rs.create_client([
-    "redis://redis-node001",
-    "redis://redis-node002",
-], 1)
+
 async def main():
-    print(await x.execute(b"hset", "fooh", "a", b"asdfg"))
-    print(await x.fetch_int("hset", "fooh", "b", 11234567890))
-    print(await x.fetch_int("hget", "fooh", "b"))
-    print(await x.fetch_str("hget", "fooh", "a"))
-    print(await x.fetch_dict("hgetall", "fooh"))
-    print(await x.execute("cluster", "nodes"))
-    print(await x.fetch_bytes("get", "foo"))
-    print(await x.fetch_int("get", "foo"))
-    print(await x.execute("hgetall", "fooh"))
-    print(await x.execute("zadd", "fooz", 1.5678, "b"))
-    print(await x.fetch_scores("zrange", "fooz", 0, -1, "WITHSCORES"))
+    async with redis_rs.create_client(
+        "redis://redis-node001",
+        "redis://redis-node002",
+        max_size=1,
+    ) as x:
+        print(await x.execute(b"HSET", "fooh", "a", b"asdfg"))
+        print(await x.fetch_int("HSET", "fooh", "b", 11234567890))
+        print(await x.fetch_int("HGET", "fooh", "b"))
+        print(await x.fetch_str("HGET", "fooh", "a"))
+        print(await x.fetch_dict("HGETALL", "fooh"), encoding="utf-8")
+        print(await x.execute("CLUSTER", "NODES"))
+        print(await x.fetch_bytes("GET", "foo"))
+        print(await x.fetch_int("GET", "foo"))
+        print(await x.execute("HGETALL", "fooh"))
+        print(await x.execute("ZADD", "fooz", 1.5678, "b"))
+        print(await x.fetch_scores("ZRANGE", "fooz", 0, -1, "WITHSCORES"))
+        print(x.status())
+
+        stream = "redis-rs"
+        print("x.xadd", await x.xadd(stream, "*", {"a": "1234", "d": 4567}))
+        print("x.xadd", await x.xadd(stream, items={"a": "1234", "d": 4567}))
+        print("x.xadd", await x.xadd(stream, {"a": "1234", "d": 4567}))
+        print("x.xadd", await x.xadd(stream, "*", "a", "1234", "d", 4567))
+        print("x.xadd", await x.xadd(stream, "a", "1234", "d", 4567))
+        print("xadd", await x.fetch_str("XADD", stream, "*", "a", "1234", "d", 4567))
+        print("xread", await x.execute("XREAD", "STREAMS", stream, 0))
+        print("xread", await x.fetch_dict("XREAD", "STREAMS", stream, 0, encoding="int"))
+        print("x.xread", await x.xread({stream: 0}, encoding="int"))
 
 
 asyncio.run(main())
