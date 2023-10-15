@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "redis-rs"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 description = "Python wrapper for redis-rs"
 authors = [
     { name = "Alexander Malev", email = "yttrium@somedev.ru" },
@@ -21,7 +21,6 @@ classifiers = [
     "Framework :: AsyncIO",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -34,9 +33,29 @@ Issues = "https://github.com/aamalev/redis-rs-py/issues"
 Documentation = "https://github.com/aamalev/redis-rs-py#using"
 Changelog = "https://github.com/aamalev/redis-rs-py/releases"
 
+[tool.mypy]
+warn_redundant_casts = true
+check_untyped_defs = true
+
+[tool.black]
+line-length = 120
+target-version = [
+    "py38",
+    "py39",
+    "py310",
+    "py311",
+]
+
+[tool.ruff]
+line-length = 120
+
 [tool.hatch.envs.default]
 dependencies = [
     "maturin",
+    "mypy",
+    "black",
+    "ruff",
+    "isort",
 ]
 
 [tool.hatch.envs.default.scripts]
@@ -44,9 +63,12 @@ build = [
     "maturin develop",
 ]
 check = [
+    "ruff redis_rs",
+    "mypy redis_rs",
     "cargo clippy",
-    "build",
 ]
 fmt = [
     "cargo fmt",
+    "isort redis_rs",
+    "black redis_rs",
 ]
