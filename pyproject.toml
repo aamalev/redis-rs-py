@@ -53,6 +53,13 @@ target-version = [
 [tool.ruff]
 line-length = 120
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = [
+    "redis_rs",
+    "tests",
+]
+
 [tool.hatch.envs.default]
 dependencies = [
     "maturin",
@@ -60,6 +67,7 @@ dependencies = [
     "black",
     "ruff",
     "isort",
+    "pytest-asyncio",
 ]
 
 [tool.hatch.envs.default.scripts]
@@ -67,12 +75,12 @@ build = [
     "maturin develop",
 ]
 check = [
-    "ruff redis_rs",
-    "mypy redis_rs",
+    "ruff redis_rs tests",
+    "mypy redis_rs tests",
     "cargo clippy",
 ]
 fmt = [
     "cargo fmt",
-    "isort redis_rs",
-    "black redis_rs",
+    "isort redis_rs tests",
+    "black redis_rs tests",
 ]

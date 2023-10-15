@@ -11,10 +11,33 @@ on:
 
 jobs:
   tests:
-    name: Rust tests
+    name: Rust test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - name: cargo test
         run: cargo test
+
+  pytest:
+    name: pytest on redis
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        redis-version:
+          - '6'
+          - '7'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: pip install -U hatch
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.5.0
+        with:
+          redis-version: ${{ matrix.redis-version }}
+      - name: Build develop
+        run: hatch run maturin develop
+      - name: Run pytest
+        run: hatch run pytest
