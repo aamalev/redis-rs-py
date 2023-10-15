@@ -113,6 +113,8 @@ Using
           print("xread", await x.execute("XREAD", "STREAMS", stream, 0))
           print("xread", await x.fetch_dict("XREAD", "STREAMS", stream, 0, encoding="int"))
           print("x.xread", await x.xread({stream: 0}, encoding="int"))
+          print("x.xread", await x.xread(stream, id=0, encoding="int"))
+          print("x.xread", await x.xread(stream, stream))
 
 
   asyncio.run(main())
