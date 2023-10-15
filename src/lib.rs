@@ -12,7 +12,7 @@ mod types;
 #[pyfunction]
 #[pyo3(signature = (*initial_nodes, max_size, cluster))]
 fn create_client(
-    mut initial_nodes: Vec<String>,
+    initial_nodes: Vec<String>,
     max_size: Option<u32>,
     cluster: Option<bool>,
 ) -> PyResult<client::Client> {
@@ -23,7 +23,10 @@ fn create_client(
     let mut cm = if is_cluster {
         client::ContextManager::new_cluster(initial_nodes)
     } else {
-        let addr = initial_nodes.remove(0);
+        let addr = initial_nodes
+            .get(0)
+            .map(String::as_str)
+            .unwrap_or("localhost:6379");
         client::ContextManager::new(addr)
     };
     if let Some(size) = max_size {

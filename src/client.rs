@@ -34,9 +34,9 @@ impl ContextManager {
         }
     }
 
-    pub fn new(addr: String) -> Self {
+    pub fn new(addr: &str) -> Self {
         Self {
-            initial_nodes: vec![addr],
+            initial_nodes: vec![addr.to_string()],
             is_cluster: false,
             max_size: 10,
             pool_type: "bb8".to_string(),
