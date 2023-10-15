@@ -60,6 +60,9 @@ testpaths = [
     "tests",
 ]
 
+[tool.hatch.version]
+path = "Cargo.toml"
+
 [tool.hatch.envs.default]
 dependencies = [
     "maturin",

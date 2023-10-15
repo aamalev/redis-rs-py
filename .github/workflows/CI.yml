@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Install hatch
+      run: pip install --upgrade hatch
+    - name: Set version from tag
+      run: hatch version $GITHUB_REF_NAME
     - uses: PyO3/maturin-action@v1
       with:
         manylinux: auto
@@ -26,6 +30,10 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Install hatch
+      run: pip install --upgrade hatch
+    - name: Set version from tag
+      run: hatch version $GITHUB_REF_NAME
     - uses: PyO3/maturin-action@v1
       with:
         command: build
@@ -40,6 +48,10 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Install hatch
+      run: pip install --upgrade hatch
+    - name: Set version from tag
+      run: hatch version $GITHUB_REF_NAME
     - uses: PyO3/maturin-action@v1
       with:
         command: build
