@@ -11,13 +11,14 @@ on:
 
 jobs:
   tests:
-    name: Rust pytest
+    name: Rust test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - name: cargo test
         run: cargo test
+
   pytest:
     name: pytest on redis
     runs-on: ubuntu-latest
