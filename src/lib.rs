@@ -10,7 +10,7 @@ mod pool;
 mod types;
 
 #[pyfunction]
-#[pyo3(signature = (*initial_nodes, max_size, cluster))]
+#[pyo3(signature = (*initial_nodes, max_size=None, cluster=None))]
 fn create_client(
     initial_nodes: Vec<String>,
     max_size: Option<u32>,
@@ -26,7 +26,7 @@ fn create_client(
         let addr = initial_nodes
             .get(0)
             .map(String::as_str)
-            .unwrap_or("localhost:6379");
+            .unwrap_or("redis://localhost:6379");
         client::ContextManager::new(addr)
     };
     if let Some(size) = max_size {
