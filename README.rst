@@ -20,7 +20,9 @@ redis-rs
 
 .. image:: https://img.shields.io/pypi/dm/redis-rs.svg
   :target: https://pypi.org/project/redis-rs
+
 |
+
 .. image:: https://img.shields.io/badge/Rustc-1.73.0-blue.svg
   :target: https://www.rust-lang.org/
 
