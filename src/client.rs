@@ -283,7 +283,7 @@ impl Client {
         let cm = self.cm.clone();
         future_into_py(py, async move {
             let cm = cm.read().await;
-            let result: usize = cm.execute(&String::from(cmd), args).await?;
+            let result: i64 = cm.execute(&String::from(cmd), args).await?;
             Ok(result)
         })
     }
@@ -365,8 +365,8 @@ impl Client {
         let cm = self.cm.clone();
         future_into_py(py, async move {
             let mut c = cm.read().await.get_connection().await?;
-            let result = c.incr(key, delta).await.map_err(error::RedisError::from)?;
-            Ok(Python::with_gil(|py| types::to_object(py, result, "float")))
+            let result: f64 = c.incr(key, delta).await.map_err(error::RedisError::from)?;
+            Ok(result)
         })
     }
 
