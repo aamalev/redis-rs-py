@@ -35,7 +35,7 @@ jobs:
       with:
         python-version: '3.x'
     - name: Install hatch
-      run: pip install --upgrade hatch
+      run: pip3 install --upgrade hatch hatchling
     - name: Set version from tag
       run: hatch version $GITHUB_REF_NAME
     - uses: PyO3/maturin-action@v1
