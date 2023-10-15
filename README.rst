@@ -95,6 +95,7 @@ Using
           print(await x.fetch_int("HGET", "fooh", "b"))
           print(await x.fetch_str("HGET", "fooh", "a"))
           print(await x.fetch_dict("HGETALL", "fooh", encoding="utf-8"))
+          print(await x.hgetall("fooh", encoding="utf-8"))
           print(await x.execute("CLUSTER", "NODES"))
           print(await x.fetch_bytes("GET", "foo"))
           print(await x.fetch_int("GET", "foo"))
