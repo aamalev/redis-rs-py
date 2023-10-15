@@ -50,10 +50,18 @@ class AsyncClient:
     async def xadd(self, stream: str, items: Dict[str, Arg]) -> Dict: ...
     @overload
     async def xadd(self, stream: str, *args: Arg) -> Dict: ...
+    @overload
     async def xread(
         self,
         streams: Dict[str, Union[str, Literal["$"], Literal[0]]],
         *,
+        encoding: Optional[Encoding] = None,
+    ) -> Dict: ...
+    @overload
+    async def xread(
+        self,
+        *streams: str,
+        id: Union[str, Literal["$"], Literal[0]] = 0,
         encoding: Optional[Encoding] = None,
     ) -> Dict: ...
 

@@ -478,20 +478,35 @@ impl Client {
         })
     }
 
-    #[pyo3(signature = (streams, **kwargs))]
+    #[pyo3(signature = (streams, *args, id=None, **kwargs))]
     fn xread<'a>(
         &self,
         py: Python<'a>,
-        streams: HashMap<String, types::Arg>,
+        streams: types::ScalarOrMap,
+        args: Vec<types::Str>,
+        id: Option<types::Arg>,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
         let encoding = self.get_encoding(kwargs);
         let mut keys = vec![];
         let mut ids = vec![];
-        for (k, v) in streams.into_iter() {
-            keys.push(k);
-            ids.push(v);
+        let id = id.unwrap_or(types::Arg::Int(0));
+        match streams {
+            types::ScalarOrMap::Scalar(s) => {
+                keys.push(String::from(s));
+                for stream in args.into_iter() {
+                    keys.push(String::from(stream));
+                    ids.push(id.clone());
+                }
+                ids.push(id);
+            }
+            types::ScalarOrMap::Map(m) => {
+                for (k, v) in m.into_iter() {
+                    keys.push(k);
+                    ids.push(v);
+                }
+            }
         }
         future_into_py(py, async move {
             let mut c = cm.read().await.get_connection().await?;
