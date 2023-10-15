@@ -1,23 +1,34 @@
 redis-rs
 ========
 
+.. image:: https://img.shields.io/badge/License-MIT-blue.svg
+   :target: https://lbesson.mit-license.org/
+
 .. image:: https://img.shields.io/pypi/v/redis-rs.svg
   :target: https://pypi.org/project/redis-rs
-
-.. image:: https://github.com/aamalev/redis-rs-py/workflows/Tests/badge.svg
-  :target: https://github.com/aamalev/redis-rs-py/actions?query=workflow%3ATests
-
-.. image:: https://readthedocs.org/projects/redis-rs/badge/?version=latest
-  :target: https://github.com/aamalev/redis-rs-py#redis-rs
-  :alt: Documentation Status
 
 .. image:: https://img.shields.io/pypi/pyversions/redis-rs.svg
   :target: https://pypi.org/project/redis-rs
   :alt: Python versions
 
+.. image:: https://readthedocs.org/projects/redis-rs/badge/?version=latest
+  :target: https://github.com/aamalev/redis-rs-py#redis-rs
+  :alt: Documentation Status
+
+.. image:: https://github.com/aamalev/redis-rs-py/workflows/Tests/badge.svg
+  :target: https://github.com/aamalev/redis-rs-py/actions?query=workflow%3ATests
+
 .. image:: https://img.shields.io/pypi/dm/redis-rs.svg
   :target: https://pypi.org/project/redis-rs
+|
+.. image:: https://img.shields.io/badge/Rustc-1.73.0-blue.svg
+  :target: https://www.rust-lang.org/
 
+.. image:: https://img.shields.io/badge/PyO3-maturin-blue.svg
+  :target: https://github.com/PyO3/maturin
+
+.. image:: https://img.shields.io/badge/PyO3-asyncio-blue.svg
+  :target: https://github.com/awestlake87/pyo3-asyncio
 
 .. image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v0.json
   :target: https://github.com/charliermarsh/ruff
@@ -37,12 +48,13 @@ redis-rs
 
 
 Python wrapper for:
-  `redis-rs <https://github.com/redis-rs/redis-rs>`_,
-  redis_cluster_async,
-  `bb8 <https://github.com/djc/bb8>`_,
-  bb8-redis,
-  bb8-redis-cluster,
-  deadpool-redis-cluster,
+  | `redis-rs <https://github.com/redis-rs/redis-rs>`_,
+  | redis_cluster_async,
+  | `bb8 <https://github.com/djc/bb8>`_,
+  | bb8-redis,
+  | bb8-redis-cluster,
+  | deadpool-redis-cluster,
+
 
 Features
 --------
