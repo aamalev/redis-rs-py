@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "redis-rs"
 dynamic = ["version"]
 requires-python = ">=3.8"
-license = "MIT"
+license = {file = "LICENSE"}
 description = "Python wrapper for redis-rs"
 authors = [
     { name = "Alexander Malev", email = "yttrium@somedev.ru" },
@@ -17,6 +17,7 @@ keywords = [
     "rust",
 ]
 classifiers = [
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
