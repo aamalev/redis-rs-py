@@ -23,7 +23,7 @@ redis-rs
 
 |
 
-.. image:: https://img.shields.io/badge/Rustc-1.73.0-blue.svg
+.. image:: https://img.shields.io/badge/Rustc-1.73.0-blue?logo=rust
   :target: https://www.rust-lang.org/
 
 .. image:: https://img.shields.io/badge/PyO3-maturin-blue.svg
