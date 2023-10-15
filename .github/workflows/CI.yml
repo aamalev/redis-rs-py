@@ -37,7 +37,7 @@ jobs:
     - name: Install hatch
       run: pip3 install --upgrade hatch hatchling
     - name: Set version from tag
-      run: hatch version $GITHUB_REF_NAME
+      run: hatch version ${{ github.ref_name }}
     - uses: PyO3/maturin-action@v1
       with:
         command: build
