@@ -18,3 +18,26 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: cargo test
         run: cargo test
+  pytest:
+    name: Rust pytest
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        redis-version:
+          - '6'
+          - '7'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: PyO3/maturin-action@v1
+        with:
+          manylinux: auto
+          command: develop
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.5.0
+        with:
+          redis-version: ${{ matrix.redis-version }}
+      - name: Install dependencies
+        run: pip install -U pytest-asyncio
+      - name: Run pytest
+        run: pytest
