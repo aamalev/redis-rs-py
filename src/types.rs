@@ -31,18 +31,20 @@ pub fn to_dict(py: Python, value: Value, encoding: &str) -> PyObject {
     let result = PyDict::new(py);
 
     if let Value::Bulk(v) = value {
-        if let Value::Bulk(_) = v.get(0).unwrap() {
+        if let Some(Value::Bulk(_)) = v.get(0) {
             for item in v.into_iter() {
                 if let Value::Bulk(mut pair) = item {
-                    let key: String =
-                        FromRedisValue::from_redis_value(pair.get(0).unwrap()).unwrap();
-                    let value = to_dict(py, pair.pop().unwrap(), encoding);
-                    result.set_item(key, value).unwrap();
+                    let rkey: Result<String, redis::RedisError> =
+                        FromRedisValue::from_redis_value(pair.get(0).unwrap_or(&Value::Nil));
+                    if let Ok(key) = rkey {
+                        let value = to_dict(py, pair.pop().unwrap_or(Value::Nil), encoding);
+                        result.set_item(key, value).unwrap();
+                    }
                 }
             }
-        } else if let Value::Data(_) = v.get(1).unwrap() {
+        } else if let Some(Value::Data(_)) = v.get(1) {
             let map: HashMap<String, Vec<u8>> =
-                FromRedisValue::from_redis_value(&Value::Bulk(v)).unwrap();
+                FromRedisValue::from_redis_value(&Value::Bulk(v)).unwrap_or_default();
             for (k, v) in map.into_iter() {
                 let val = decode(py, v, encoding);
                 result.set_item(k, val).unwrap();
