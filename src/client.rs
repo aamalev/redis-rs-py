@@ -360,6 +360,22 @@ impl Client {
         })
     }
 
+    #[pyo3(signature = (key, **kwargs))]
+    fn hgetall<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<&'a PyAny> {
+        let cm = self.cm.clone();
+        let encoding = self.get_encoding(kwargs);
+        future_into_py(py, async move {
+            let mut cm = cm.read().await.get_connection().await?;
+            let value = cm.hgetall(key).await.map_err(error::RedisError::from)?;
+            Ok(Python::with_gil(|py| types::to_dict(py, value, &encoding)))
+        })
+    }
+
     #[pyo3(signature = (key, delta = 1.0))]
     fn incr<'a>(&self, py: Python<'a>, key: types::Str, delta: f64) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
