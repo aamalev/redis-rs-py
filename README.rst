@@ -63,7 +63,8 @@ Features
 
 * Async client for single and cluster
 * Support typing
-* Decoding values to str, int, float
+* Encoding values from str, int, float
+* Decoding values to str, int, float, list, dict
 
 
 Install
