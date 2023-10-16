@@ -63,7 +63,7 @@ Features
 
 * Async client for single and cluster
 * Support typing
-* Encoding values to str, int, float
+* Decoding values to str, int, float
 
 
 Install
