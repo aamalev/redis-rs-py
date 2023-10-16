@@ -30,10 +30,6 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4.6.1
-      with:
-        python-version: '3.x'
     - name: Install hatch
       run: pip3 install --upgrade hatch hatchling
     - name: Set version from tag
@@ -52,10 +48,6 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4.6.1
-      with:
-        python-version: '3.x'
     - name: Install hatch
       run: pip3 install --upgrade hatch
     - name: Set version from tag
