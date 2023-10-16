@@ -29,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [project.urls]
@@ -48,6 +49,7 @@ target-version = [
     "py39",
     "py310",
     "py311",
+    "py312",
 ]
 
 [tool.ruff]
@@ -86,4 +88,18 @@ fmt = [
     "cargo fmt",
     "isort redis_rs tests",
     "black redis_rs tests",
+]
+test = [
+    "check",
+    "cargo test",
+    "pytest",
+]
+
+[[tool.hatch.envs.all.matrix]]
+python = [
+    "3.8",
+    "3.9",
+    "3.10",
+    "3.11",
+    "3.12",
 ]
