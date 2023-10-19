@@ -15,6 +15,24 @@ fn _decode(
         "utf-8" | "utf8" | "UTF8" | "UTF-8" => Ok(String::from_utf8(v)?.to_object(py)),
         "float" => Ok(String::from_utf8(v)?.parse::<f64>()?.to_object(py)),
         "int" => Ok(String::from_utf8(v)?.parse::<i64>()?.to_object(py)),
+        "info" => {
+            let result = PyDict::new(py);
+            for (key, value) in String::from_utf8(v)?
+                .split("\r\n")
+                .filter_map(|x| x.split_once(':'))
+            {
+                if (value.len() > 1) & value.starts_with('0') & !value.starts_with("0.") {
+                    result.set_item(key, value)?;
+                } else if let Ok(value) = value.parse::<i64>() {
+                    result.set_item(key, value)?;
+                } else if let Ok(value) = value.parse::<f64>() {
+                    result.set_item(key, value)?;
+                } else {
+                    result.set_item(key, value)?;
+                }
+            }
+            Ok(result.to_object(py))
+        }
         _ => Ok(PyBytes::new(py, &v).to_object(py)),
     }
 }
