@@ -91,6 +91,9 @@ Using
           max_size=1,
           cluster=True,
       ) as x:
+          info = await x.execute("INFO", "SERVER", encoding="info")
+          print(info["redis_version"])
+
           print(await x.execute(b"HSET", "fooh", "a", b"asdfg"))
           print(await x.fetch_int("HSET", "fooh", "b", 11234567890))
           print(await x.fetch_int("HGET", "fooh", "b"))
