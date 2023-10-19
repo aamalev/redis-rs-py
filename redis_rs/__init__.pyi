@@ -9,6 +9,7 @@ Encoding = Union[
     Literal["utf8"],
     Literal["int"],
     Literal["float"],
+    Literal["info"],
 ]
 
 Arg = Union[str, bytes, int, float]
