@@ -15,7 +15,7 @@ jobs:
       run: hatch version $GITHUB_REF_NAME
     - uses: PyO3/maturin-action@v1
       with:
-        before-script-linux: apt-get install -y openssl libssl-dev
+        before-script-linux: yum install -y openssl
         manylinux: auto
         command: build
         args: --release --sdist -o dist --find-interpreter
