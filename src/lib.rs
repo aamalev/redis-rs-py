@@ -1,12 +1,15 @@
 use pyo3::prelude::*;
-mod bb8_cluster;
-mod bb8_single;
 mod client;
+mod client_result;
+mod client_result_async;
 mod cluster;
-mod deadpool_cluster;
+mod cluster_bb8;
+mod cluster_deadpool;
 mod error;
 mod exceptions;
 mod pool;
+mod pool_manager;
+mod single_bb8;
 mod types;
 
 #[pyfunction]
@@ -21,13 +24,13 @@ fn create_client(
         Some(c) => c,
     };
     let mut cm = if is_cluster {
-        client::ContextManager::new_cluster(initial_nodes)
+        pool_manager::PoolManager::new_cluster(initial_nodes)
     } else {
         let addr = initial_nodes
             .get(0)
             .map(String::as_str)
             .unwrap_or("redis://localhost:6379");
-        client::ContextManager::new(addr)
+        pool_manager::PoolManager::new(addr)
     };
     if let Some(size) = max_size {
         cm.max_size = size;
