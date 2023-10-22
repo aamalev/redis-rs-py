@@ -1,16 +1,19 @@
 use crate::{client_result::ClientResult, types};
 use pyo3::{prelude::*, types::PyDict};
+use redis::streams::{StreamMaxlen, StreamReadOptions};
 use std::{collections::HashMap, num::NonZeroUsize};
 
 #[pyclass]
 pub struct Client {
     pub(crate) cr: Box<dyn ClientResult + Send>,
+    #[pyo3(get)]
+    pub client_id: String,
 }
 
 #[pymethods]
 impl Client {
     fn __aenter__<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
-        self.cr.init(py)
+        self.cr.init(py, self)
     }
 
     fn __aexit__<'a>(
@@ -221,7 +224,8 @@ impl Client {
         self.cr.lrange(py, key, start, stop, encoding)
     }
 
-    #[pyo3(signature = (stream, *args, id = None, items = None))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (stream, *args, id = None, items = None, maxlen = None, approx = true))]
     fn xadd<'a>(
         &self,
         py: Python<'a>,
@@ -229,6 +233,8 @@ impl Client {
         mut args: Vec<types::ScalarOrMap>,
         mut id: Option<types::Str>,
         items: Option<HashMap<String, types::Arg>>,
+        maxlen: Option<usize>,
+        approx: bool,
     ) -> PyResult<&'a PyAny> {
         args.push(types::ScalarOrMap::Map(items.unwrap_or_default()));
         let mut map = HashMap::new();
@@ -247,23 +253,49 @@ impl Client {
         while !flat.is_empty() {
             map.insert(flat.remove(0).into(), flat.remove(0));
         }
+        let maxlen = maxlen.map(|x| {
+            if approx {
+                StreamMaxlen::Approx(x)
+            } else {
+                StreamMaxlen::Equals(x)
+            }
+        });
         let id = id.unwrap_or(types::Str::String("*".to_string()));
-        self.cr.xadd(py, stream, id, map)
+        self.cr.xadd(py, stream, id, map, maxlen)
     }
 
-    #[pyo3(signature = (streams, *args, id=None, **kwargs))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (streams, *args, id=None, block=None, count=None, noack=None, group=None, encoding=None))]
     fn xread<'a>(
         &self,
         py: Python<'a>,
         streams: types::ScalarOrMap,
         args: Vec<types::Str>,
         id: Option<types::Arg>,
-        kwargs: Option<&PyDict>,
+        block: Option<usize>,
+        count: Option<usize>,
+        noack: Option<bool>,
+        group: Option<types::Str>,
+        encoding: Option<String>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = encoding.unwrap_or_default();
+        let mut id = id.unwrap_or(types::Arg::Int(0));
+        let mut options = StreamReadOptions::default();
+        if let Some(ms) = block {
+            options = options.block(ms);
+        }
+        if let Some(n) = count {
+            options = options.count(n);
+        }
+        if let Some(true) = noack {
+            options = options.noack();
+        }
+        if let Some(g) = group {
+            options = options.group(g, self.client_id.clone());
+            id = types::Arg::Bytes(b">".to_vec());
+        }
         let mut keys = vec![];
         let mut ids = vec![];
-        let id = id.unwrap_or(types::Arg::Int(0));
         match streams {
             types::ScalarOrMap::Scalar(s) => {
                 keys.push(String::from(s));
@@ -280,6 +312,17 @@ impl Client {
                 }
             }
         }
-        self.cr.xread(py, keys, ids, encoding)
+        self.cr.xread(py, keys, ids, options, encoding)
+    }
+
+    #[pyo3(signature = (key, group, *id))]
+    fn xack<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        group: types::Str,
+        id: Vec<types::Str>,
+    ) -> PyResult<&'a PyAny> {
+        self.cr.xack(py, key, group, id)
     }
 }

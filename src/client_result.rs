@@ -1,12 +1,15 @@
 use std::{collections::HashMap, num::NonZeroUsize};
 
 use pyo3::prelude::*;
-use redis::Value;
+use redis::{
+    streams::{StreamMaxlen, StreamReadOptions},
+    Value,
+};
 
-use crate::{error, types};
+use crate::{client::Client, error, types};
 
 pub trait ClientResult {
-    fn init<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny>;
+    fn init<'a>(&self, py: Python<'a>, client: &Client) -> PyResult<&'a PyAny>;
     fn close<'a>(
         &self,
         py: Python<'a>,
@@ -100,13 +103,22 @@ pub trait ClientResult {
         py: Python<'a>,
         stream: types::Str,
         id: types::Str,
-        items: HashMap<String, types::Arg>,
+        map: HashMap<String, types::Arg>,
+        maxlen: Option<StreamMaxlen>,
     ) -> PyResult<&'a PyAny>;
     fn xread<'a>(
         &self,
         py: Python<'a>,
         streams: Vec<String>,
         ids: Vec<types::Arg>,
+        options: StreamReadOptions,
         encoding: String,
+    ) -> PyResult<&'a PyAny>;
+    fn xack<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        group: types::Str,
+        id: Vec<types::Str>,
     ) -> PyResult<&'a PyAny>;
 }

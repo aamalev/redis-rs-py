@@ -16,10 +16,14 @@ use crate::{
 
 impl From<PoolManager> for Client {
     fn from(value: PoolManager) -> Self {
+        let client_id = value.client_id.clone();
         let ac = AsyncClientResult {
             cm: Arc::new(tokio::sync::RwLock::new(value)),
         };
-        Self { cr: Box::new(ac) }
+        Self {
+            cr: Box::new(ac),
+            client_id,
+        }
     }
 }
 
@@ -29,6 +33,7 @@ pub struct PoolManager {
     pub(crate) max_size: u32,
     pub(crate) pool_type: String,
     pub(crate) pool: Box<dyn Pool + Send + Sync>,
+    pub(crate) client_id: String,
 }
 
 impl PoolManager {
@@ -39,6 +44,7 @@ impl PoolManager {
             max_size: 10,
             pool_type: "bb8".to_string(),
             pool: Box::new(ClosedPool),
+            client_id: String::default(),
         }
     }
 
@@ -49,6 +55,7 @@ impl PoolManager {
             max_size: 10,
             pool_type: "bb8".to_string(),
             pool: Box::new(ClosedPool),
+            client_id: String::default(),
         }
     }
 

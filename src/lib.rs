@@ -13,11 +13,12 @@ mod single_bb8;
 mod types;
 
 #[pyfunction]
-#[pyo3(signature = (*initial_nodes, max_size=None, cluster=None))]
+#[pyo3(signature = (*initial_nodes, max_size=None, cluster=None, client_id=None))]
 fn create_client(
     initial_nodes: Vec<String>,
     max_size: Option<u32>,
     cluster: Option<bool>,
+    client_id: Option<String>,
 ) -> PyResult<client::Client> {
     let is_cluster = match cluster {
         None => initial_nodes.len() > 1,
@@ -34,6 +35,9 @@ fn create_client(
     };
     if let Some(size) = max_size {
         cm.max_size = size;
+    }
+    if let Some(client_id) = client_id {
+        cm.client_id = client_id;
     }
     Ok(cm.into())
 }
