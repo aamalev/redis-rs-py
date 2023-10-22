@@ -56,6 +56,9 @@ target-version = [
 line-length = 120
 
 [tool.pytest.ini_options]
+markers = [
+    "redis",
+]
 asyncio_mode = "auto"
 testpaths = [
     "redis_rs",
@@ -69,7 +72,7 @@ path = "Cargo.toml"
 dependencies = [
     "maturin",
     "mypy",
-    "black",
+        "black",
     "ruff",
     "isort",
     "pytest-asyncio",
