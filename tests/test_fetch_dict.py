@@ -69,12 +69,14 @@ async def test_xinfo_groups(async_client: redis_rs.AsyncClient):
     assert len(xinfo[1]) > 3
 
 
+@pytest.mark.redis(version=6)
 async def test_xinfo_consumers(async_client: redis_rs.AsyncClient):
     stream = f"stream-{uuid4()}"
     group = f"group-{uuid4()}"
+    consumer = f"consumer-{uuid4()}"
 
     await async_client.execute("XGROUP", "CREATE", stream, group, 0, "MKSTREAM")
-    await async_client.execute("XGROUP", "CREATECONSUMER", stream, group, async_client.client_id)
+    await async_client.execute("XGROUP", "CREATECONSUMER", stream, group, consumer)
     xinfo = await async_client.fetch_dict("XINFO", "CONSUMERS", stream, group)
     assert xinfo
     assert len(xinfo) == 1
