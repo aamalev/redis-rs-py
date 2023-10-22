@@ -45,27 +45,37 @@ pub fn decode(py: Python, v: Vec<u8>, encoding: &str) -> PyObject {
     }
 }
 
+fn _to_dict(py: Python<'_>, value: Value, encoding: &str) -> PyObject {
+    match value {
+        Value::Data(v) => decode(py, v, encoding),
+        Value::Nil => py.None(),
+        Value::Int(i) => i.to_object(py),
+        Value::Bulk(_) => to_dict(py, value, encoding),
+        Value::Status(s) => s.to_object(py),
+        Value::Okay => true.to_object(py),
+    }
+}
+
 pub fn to_dict(py: Python, value: Value, encoding: &str) -> PyObject {
     let result = PyDict::new(py);
-
-    if let Value::Bulk(v) = value {
-        if let Some(Value::Bulk(_)) = v.get(0) {
-            for item in v.into_iter() {
-                if let Value::Bulk(mut pair) = item {
-                    let rkey: Result<String, redis::RedisError> =
-                        FromRedisValue::from_redis_value(pair.get(0).unwrap_or(&Value::Nil));
-                    if let Ok(key) = rkey {
-                        let value = to_dict(py, pair.pop().unwrap_or(Value::Nil), encoding);
-                        result.set_item(key, value).unwrap();
-                    }
+    let map: HashMap<String, Value> = FromRedisValue::from_redis_value(&value).unwrap_or_default();
+    if !map.is_empty() {
+        for (k, value) in map.into_iter() {
+            let val = _to_dict(py, value, encoding);
+            result.set_item(k, val).unwrap();
+        }
+    } else if let Value::Bulk(v) = value {
+        for (n, value) in v.into_iter().enumerate() {
+            let map: HashMap<String, Value> =
+                FromRedisValue::from_redis_value(&value).unwrap_or_default();
+            if map.len() == 1 {
+                for (k, value) in map.into_iter() {
+                    let val = _to_dict(py, value, encoding);
+                    result.set_item(k, val).unwrap();
                 }
-            }
-        } else if let Some(Value::Data(_)) = v.get(1) {
-            let map: HashMap<String, Vec<u8>> =
-                FromRedisValue::from_redis_value(&Value::Bulk(v)).unwrap_or_default();
-            for (k, v) in map.into_iter() {
-                let val = decode(py, v, encoding);
-                result.set_item(k, val).unwrap();
+            } else {
+                let value = _to_dict(py, value, encoding);
+                result.set_item(n, value).unwrap();
             }
         }
     }
