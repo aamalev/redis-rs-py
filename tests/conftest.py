@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import pytest
@@ -13,9 +14,23 @@ def to_addr(s: str) -> str:
     return s
 
 
+async def get_redis_version(nodes: list) -> str:
+    key = "redis_version"
+    async with redis_rs.create_client(
+        *nodes,
+    ) as c:
+        infos = await c.execute("INFO", "SERVER", encoding="info")
+        if isinstance(infos, dict):
+            result = infos.get(key)
+        else:
+            infos = filter(lambda x: isinstance(x, dict), infos)
+            result = min(map(lambda x: x[key], infos))
+        return result
+
+
 NODES = [to_addr(node) for node in os.environ.get("REDIS_NODES", "").split(",") if node]
 IS_CLUSTER = os.environ.get("REDIS_CLUSTER", "0") not in {"0"}
-VERSION = os.environ.get("REDIS_VERSION", "6")
+VERSION = ""
 
 
 @pytest.fixture
@@ -34,5 +49,9 @@ def pytest_runtest_setup(item):
                 pytest.skip("Single redis")
             elif marker.kwargs.get("single") and IS_CLUSTER:
                 pytest.skip("Cluster redis")
-            elif str(version := marker.kwargs.get("version", "")) > VERSION:
-                pytest.skip(f"redis_version < {version}")
+            elif version := marker.kwargs.get("version"):
+                global VERSION
+                if not VERSION:
+                    VERSION = asyncio.run(get_redis_version(NODES))
+                if str(version) > VERSION:
+                    pytest.skip(f"redis_version:{VERSION} < {version}")
