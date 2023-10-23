@@ -73,7 +73,7 @@ path = "Cargo.toml"
 dependencies = [
     "maturin",
     "mypy",
-        "black",
+    "black",
     "ruff",
     "isort",
     "pytest-asyncio",
