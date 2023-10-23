@@ -21,10 +21,11 @@ async def get_redis_version(nodes: list) -> str:
     ) as c:
         infos = await c.execute("INFO", "SERVER", encoding="info")
         if isinstance(infos, dict):
-            result = infos.get(key)
+            result = infos.get(key, "")
         else:
-            infos = filter(lambda x: isinstance(x, dict), infos)
-            result = min(map(lambda x: x[key], infos))
+            assert isinstance(infos, list)
+            info = filter(lambda x: isinstance(x, dict), infos)
+            result = min(map(lambda x: x[key], info))
         return result
 
 

@@ -41,6 +41,7 @@ Changelog = "https://github.com/aamalev/redis-rs-py/releases"
 [tool.mypy]
 warn_redundant_casts = true
 check_untyped_defs = true
+ignore_missing_imports = true
 
 [tool.black]
 line-length = 120
