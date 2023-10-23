@@ -21,6 +21,7 @@ class Client:
     async def __aexit__(self, *args, **kwargs): ...
 
 class AsyncClient:
+    client_id: str
     def status(self) -> Dict: ...
     async def execute(self, *args: Arg, encoding: Optional[Encoding] = None) -> Result: ...
     async def fetch_bytes(self, *args: Arg) -> bytes: ...
@@ -46,24 +47,66 @@ class AsyncClient:
         encoding: Optional[Encoding] = None,
     ) -> List[Result]: ...
     @overload
-    async def xadd(self, stream: str, id: str, items: Dict[str, Arg]) -> str: ...
+    async def xadd(
+        self,
+        stream: str,
+        id: str,
+        items: Dict[str, Arg],
+        *,
+        maxlen: Optional[int] = None,
+        approx: bool = True,
+    ) -> str: ...
     @overload
-    async def xadd(self, stream: str, items: Dict[str, Arg]) -> str: ...
+    async def xadd(
+        self,
+        stream: str,
+        items: Dict[str, Arg],
+        *,
+        id: str = "*",
+        maxlen: Optional[int] = None,
+        approx: bool = True,
+    ) -> str: ...
     @overload
-    async def xadd(self, stream: str, *args: Arg) -> str: ...
+    async def xadd(
+        self,
+        stream: str,
+        *args: Arg,
+        id: str = "*",
+        maxlen: Optional[int] = None,
+        approx: bool = True,
+    ) -> str: ...
     @overload
     async def xread(
         self,
-        streams: Dict[str, Union[str, Literal["$"], Literal[0]]],
+        streams: Dict[str, Union[str, Literal["$"], Literal[">"], Literal[0]]],
         *,
+        block: Optional[int] = None,
+        count: Optional[int] = None,
+        noack: Optional[bool] = None,
+        group: Optional[str] = None,
         encoding: Optional[Encoding] = None,
     ) -> Dict: ...
     @overload
     async def xread(
         self,
         *streams: str,
-        id: Union[str, Literal["$"], Literal[0]] = 0,
+        id: Union[None, str, Literal["$"], Literal[">"], Literal[0]] = None,
+        block: Optional[int] = None,
+        count: Optional[int] = None,
+        noack: Optional[bool] = None,
+        group: Optional[str] = None,
         encoding: Optional[Encoding] = None,
     ) -> Dict: ...
+    async def xack(
+        self,
+        key: str,
+        group: str,
+        *id: Union[str, Literal["$"], Literal[0]],
+    ) -> Dict: ...
 
-def create_client(*args: str, max_size: Optional[int] = None, cluster: Optional[bool] = None) -> Client: ...
+def create_client(
+    *args: str,
+    max_size: Optional[int] = None,
+    cluster: Optional[bool] = None,
+    client_id: Optional[str] = None,
+) -> Client: ...

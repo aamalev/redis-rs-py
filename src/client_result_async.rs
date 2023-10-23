@@ -5,7 +5,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 use pyo3_asyncio::tokio::future_into_py;
-use redis::{AsyncCommands, Value};
+use redis::{
+    streams::{StreamMaxlen, StreamReadOptions},
+    AsyncCommands, Value,
+};
 
 use crate::{client::Client, client_result::ClientResult, error, pool_manager::PoolManager, types};
 
@@ -15,12 +18,14 @@ pub struct AsyncClientResult {
 }
 
 impl ClientResult for AsyncClientResult {
-    fn init<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
+    fn init<'a>(&self, py: Python<'a>, client: &Client) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
+        let client_id = client.client_id.clone();
         future_into_py(py, async move {
             cm.write().await.init().await;
             let result = Client {
                 cr: Box::new(Self { cm }),
+                client_id,
             };
             Ok(result)
         })
@@ -291,15 +296,18 @@ impl ClientResult for AsyncClientResult {
         py: Python<'a>,
         stream: types::Str,
         id: types::Str,
-        items: HashMap<String, types::Arg>,
+        map: HashMap<String, types::Arg>,
+        maxlen: Option<StreamMaxlen>,
     ) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
         future_into_py(py, async move {
             let mut c = cm.read().await.get_connection().await?;
-            let result: String = c
-                .xadd_map(stream, id, items)
-                .await
-                .map_err(error::RedisError::from)?;
+            let result: String = if let Some(ml) = maxlen {
+                c.xadd_maxlen_map(stream, ml, id, map).await
+            } else {
+                c.xadd_map(stream, id, map).await
+            }
+            .map_err(error::RedisError::from)?;
             Ok(result)
         })
     }
@@ -309,16 +317,35 @@ impl ClientResult for AsyncClientResult {
         py: Python<'a>,
         streams: Vec<String>,
         ids: Vec<types::Arg>,
+        options: StreamReadOptions,
         encoding: String,
     ) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
         future_into_py(py, async move {
             let mut c = cm.read().await.get_connection().await?;
             let result = c
-                .xread(&streams, &ids)
+                .xread_options(&streams, &ids, &options)
                 .await
                 .map_err(error::RedisError::from)?;
             Ok(Python::with_gil(|py| types::to_dict(py, result, &encoding)))
+        })
+    }
+
+    fn xack<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        group: types::Str,
+        id: Vec<types::Str>,
+    ) -> PyResult<&'a PyAny> {
+        let cm = self.cm.clone();
+        future_into_py(py, async move {
+            let mut c = cm.read().await.get_connection().await?;
+            let result: usize = c
+                .xack(key, group, &id)
+                .await
+                .map_err(error::RedisError::from)?;
+            Ok(result)
         })
     }
 }
