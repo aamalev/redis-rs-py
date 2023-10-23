@@ -20,6 +20,10 @@ jobs:
           components: rustfmt
       - name: cargo fmt
         run: cargo fmt --all -- --check
+  py:
+    name: Python linters
+    runs-on: ubuntu-latest
+    steps:
       - name: Install dependencies
         run: pip install -U hatch
       - name: ruff
