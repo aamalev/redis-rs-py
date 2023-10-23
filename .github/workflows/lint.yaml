@@ -24,6 +24,10 @@ jobs:
     name: Python linters
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Python
+        uses: actions/setup-python@v4.7.0
+        with:
+          python-version: '3.x'
       - name: Install dependencies
         run: pip install -U hatch
       - name: ruff
