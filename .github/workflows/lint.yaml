@@ -20,3 +20,13 @@ jobs:
           components: rustfmt
       - name: cargo fmt
         run: cargo fmt --all -- --check
+      - name: Install dependencies
+        run: pip install -U hatch
+      - name: ruff
+        run: hatch run ruff check redis_rs tests
+      - name: isort
+        run: hatch run isort -c redis_rs tests
+      - name: black
+        run: hatch run black --check --diff redis_rs tests
+      - name: mypy
+        run: hatch run mypy redis_rs tests
