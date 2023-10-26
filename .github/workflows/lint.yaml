@@ -24,14 +24,12 @@ jobs:
     name: Python linters
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v4.7.0
+      - name: Ruff check
+        uses: chartboost/ruff-action@v1
         with:
-          python-version: '3.x'
+          options: check redis_rs tests
       - name: Install dependencies
         run: pip install -U hatch
-      - name: ruff
-        run: hatch run ruff check redis_rs tests
       - name: isort
         run: hatch run isort -c redis_rs tests
       - name: black
