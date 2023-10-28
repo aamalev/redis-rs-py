@@ -24,17 +24,12 @@ jobs:
     name: Python linters
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v4.7.0
-        with:
-          python-version: '3.x'
+      - uses: actions/checkout@v3
       - name: Install dependencies
-        run: pip install -U hatch
-      - name: ruff
-        run: hatch run ruff check redis_rs tests
-      - name: isort
-        run: hatch run isort -c redis_rs tests
-      - name: black
-        run: hatch run black --check --diff redis_rs tests
-      - name: mypy
-        run: hatch run mypy redis_rs tests
+        run: pip install ruff mypy
+      - name: Ruff check lint
+        run: ruff redis_rs tests
+      - name: Ruff check format
+        run: ruff format --check redis_rs tests
+      - name: Run mypy
+        run: mypy redis_rs tests

@@ -43,18 +43,37 @@ warn_redundant_casts = true
 check_untyped_defs = true
 ignore_missing_imports = true
 
-[tool.black]
-line-length = 120
-target-version = [
-    "py38",
-    "py39",
-    "py310",
-    "py311",
-    "py312",
-]
 
 [tool.ruff]
 line-length = 120
+indent-width = 4
+target-version = "py38"
+
+[tool.ruff.lint]
+extend-select = [
+  # pycodestyle
+  "E",
+  # Pyflakes
+  "F",
+  # pyupgrade
+  # "UP",
+  # flake8-bugbear
+  "B",
+  # flake8-simplify
+  # "SIM",
+  # isort
+  "I",
+]
+extend-ignore = [
+    "E501",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
 
 [tool.pytest.ini_options]
 markers = [
@@ -73,9 +92,7 @@ path = "Cargo.toml"
 dependencies = [
     "maturin",
     "mypy",
-    "black",
-    "ruff",
-    "isort",
+    "ruff>0.1",
     "pytest-asyncio",
 ]
 
@@ -85,13 +102,14 @@ build = [
 ]
 check = [
     "ruff redis_rs tests",
+    "ruff format --check redis_rs tests",
     "mypy redis_rs tests",
     "cargo clippy",
 ]
 fmt = [
     "cargo fmt",
-    "isort redis_rs tests",
-    "black redis_rs tests",
+    "ruff --fix redis_rs tests",
+    "ruff format redis_rs tests",
 ]
 test = [
     "check",
