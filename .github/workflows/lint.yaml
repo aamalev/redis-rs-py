@@ -25,15 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Ruff check lint
-        uses: chartboost/ruff-action@v1
-        with:
-          args: check redis_rs tests
-      - name: Ruff check format
-        uses: chartboost/ruff-action@v1
-        with:
-          args: format --check redis_rs tests
       - name: Install dependencies
-        run: pip install mypy
+        run: pip install ruff mypy
+      - name: Ruff check lint
+        run: ruff redis_rs tests
+      - name: Ruff check format
+        run: ruff format --check redis_rs tests
       - name: Run mypy
         run: mypy redis_rs tests
