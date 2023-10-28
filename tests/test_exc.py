@@ -1,8 +1,9 @@
 import pytest
 
-import redis_rs
+from redis_rs import AsyncClient
+from redis_rs.exceptions import RedisError
 
 
-async def test_redis_error(async_client: redis_rs.AsyncClient):
-    with pytest.raises(redis_rs.exceptions.RedisError):
+async def test_redis_error(async_client: AsyncClient):
+    with pytest.raises(RedisError):
         await async_client.fetch_int("CLUSTER", "SLOTS")
