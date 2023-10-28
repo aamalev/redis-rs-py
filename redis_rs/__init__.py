@@ -9,10 +9,9 @@ import socket
 from typing import Optional
 from uuid import uuid4
 
+from .client_async import AsyncClient
 from .redis_rs import Client, exceptions
 from .redis_rs import create_client as _create_client
-
-AsyncClient = Client
 
 
 def create_client(
