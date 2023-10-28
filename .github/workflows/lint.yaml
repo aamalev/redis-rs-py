@@ -31,8 +31,8 @@ jobs:
       - name: Ruff check format
         uses: chartboost/ruff-action@v1
         with:
-          args: format  --check redis_rs tests
-      - name: Mypy
-        uses: python/mypy
-        with:
-          paths: redis_rs tests
+          args: format --check redis_rs tests
+      - name: Install dependencies
+        run: pip install mypy
+      - name: Run mypy
+        run: mypy redis_rs tests
