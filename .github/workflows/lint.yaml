@@ -24,6 +24,7 @@ jobs:
     name: Python linters
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Ruff check lint
         uses: chartboost/ruff-action@v1
         with:
