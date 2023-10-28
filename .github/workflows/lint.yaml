@@ -24,15 +24,14 @@ jobs:
     name: Python linters
     runs-on: ubuntu-latest
     steps:
-      - name: Ruff check
+      - name: Ruff check lint
         uses: chartboost/ruff-action@v1
         with:
-          options: check redis_rs tests
-      - name: Install dependencies
-        run: pip install -U hatch
-      - name: isort
-        run: hatch run isort -c redis_rs tests
-      - name: black
-        run: hatch run black --check --diff redis_rs tests
-      - name: mypy
-        run: hatch run mypy redis_rs tests
+          args: check redis_rs tests
+      - name: Ruff check format
+        uses: chartboost/ruff-action@v1
+        with:
+          args: format  --check redis_rs tests
+      - uses: python/mypy
+        with:
+          paths: redis_rs tests
