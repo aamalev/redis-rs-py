@@ -32,6 +32,7 @@ jobs:
         uses: chartboost/ruff-action@v1
         with:
           args: format  --check redis_rs tests
-      - uses: python/mypy
+      - name: Mypy
+        uses: python/mypy
         with:
           paths: redis_rs tests
