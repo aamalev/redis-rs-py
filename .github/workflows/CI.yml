@@ -10,7 +10,7 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install hatch
       run: pip install --upgrade hatch
     - name: Set version from tag
@@ -30,7 +30,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install hatch
       run: pip3 install --upgrade hatch hatchling
     - name: Set version from tag
@@ -49,7 +49,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
       uses: actions/setup-python@v4.6.1
       with:
