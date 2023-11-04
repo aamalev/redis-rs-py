@@ -14,7 +14,10 @@ pub struct DeadPoolCluster {
 
 impl From<PoolError> for error::RedisError {
     fn from(e: PoolError) -> Self {
-        error::RedisError::PoolError(e.to_string())
+        match e {
+            PoolError::Backend(e) => error::RedisError::PoolError(e),
+            _ => todo!(),
+        }
     }
 }
 
