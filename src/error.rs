@@ -29,3 +29,9 @@ impl From<tokio::sync::TryLockError> for RedisError {
         RedisError::PoolError("Try leter".to_string())
     }
 }
+
+impl From<tokio::sync::AcquireError> for RedisError {
+    fn from(_e: tokio::sync::AcquireError) -> Self {
+        RedisError::PoolError("Try leter".to_string())
+    }
+}
