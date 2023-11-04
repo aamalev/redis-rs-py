@@ -5,7 +5,7 @@ use redis::{FromRedisValue, IntoConnectionInfo};
 use crate::{
     client::Client,
     client_result_async::AsyncClientResult,
-    cluster::Cluster,
+    cluster_async::Cluster,
     cluster_bb8::BB8Cluster,
     cluster_deadpool::DeadPoolCluster,
     error,
@@ -42,7 +42,7 @@ impl PoolManager {
             initial_nodes,
             is_cluster: true,
             max_size: 10,
-            pool_type: "bb8".to_string(),
+            pool_type: "cluster_async".to_string(),
             pool: Box::new(ClosedPool),
             client_id: String::default(),
         }
@@ -67,7 +67,7 @@ impl PoolManager {
             self.pool = match self.pool_type.as_str() {
                 "bb8" => Box::new(BB8Cluster::new(nodes, ms).await),
                 "dp" => Box::new(DeadPoolCluster::new(nodes, ms)),
-                _ => Box::new(Cluster::new(nodes, ms)),
+                _ => Box::new(Cluster::new(nodes, ms).await.unwrap()),
             };
         } else {
             let info = nodes.clone().remove(0).into_connection_info().unwrap();

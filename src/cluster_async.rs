@@ -7,22 +7,30 @@ use crate::{
 };
 use async_trait::async_trait;
 use redis::{aio::ConnectionLike, cluster::ClusterClient};
+use tokio::sync::Semaphore;
 
 pub struct Cluster {
-    client: ClusterClient,
+    semaphore: Semaphore,
+    connection: redis::cluster_async::ClusterConnection,
 }
 
 impl Cluster {
-    pub fn new(initial_nodes: Vec<String>, _max_size: u32) -> Self {
+    pub async fn new(initial_nodes: Vec<String>, max_size: u32) -> Result<Self, error::RedisError> {
         let client = ClusterClient::new(initial_nodes).unwrap();
-        Self { client }
+        let semaphore = Semaphore::new(max_size as usize);
+        let connection = client.get_async_connection().await?;
+        Ok(Self {
+            semaphore,
+            connection,
+        })
     }
 }
 
 #[async_trait]
 impl Pool for Cluster {
     async fn get_connection(&self) -> Result<Connection, error::RedisError> {
-        let c = self.client.get_async_connection().await?;
+        let _ = self.semaphore.acquire().await?;
+        let c = self.connection.clone();
         Ok(Connection { c: Box::new(c) })
     }
 
@@ -31,7 +39,8 @@ impl Pool for Cluster {
         cmd: &str,
         args: Vec<types::Arg>,
     ) -> Result<redis::Value, error::RedisError> {
-        let mut conn = self.client.get_async_connection().await?;
+        let _ = self.semaphore.acquire().await?;
+        let mut conn = self.connection.clone();
         let value = conn.req_packed_command(redis::cmd(cmd).arg(&args)).await?;
         Ok(value)
     }
