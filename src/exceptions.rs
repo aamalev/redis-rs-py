@@ -14,7 +14,8 @@ impl From<error::RedisError> for PyErr {
     fn from(e: error::RedisError) -> Self {
         match e {
             error::RedisError::CommandError(s) => RedisError::new_err(s),
-            error::RedisError::PoolError(s) => PoolError::new_err(s),
+            error::RedisError::PoolError(e) => PoolError::new_err(e.to_string()),
+            error::RedisError::RedisError(e) => RedisError::new_err(e.to_string()),
         }
     }
 }
