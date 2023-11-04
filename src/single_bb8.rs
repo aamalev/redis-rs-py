@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crate::{
     error,
@@ -6,23 +6,30 @@ use crate::{
     types,
 };
 use async_trait::async_trait;
-use bb8_redis::RedisMultiplexedConnectionManager;
-use redis::aio::ConnectionLike;
+use redis::{aio::ConnectionLike, ConnectionInfo};
+
+type Manager = bb8_redis::RedisMultiplexedConnectionManager;
+type InnerPool = bb8::Pool<Manager>;
 
 pub struct BB8Pool {
-    pool: bb8::Pool<RedisMultiplexedConnectionManager>,
+    pub info: ConnectionInfo,
+    pool: InnerPool,
+    pub id: Option<String>,
 }
 
 impl BB8Pool {
-    pub async fn new(initial_nodes: Vec<String>, max_size: u32) -> Self {
-        let addr = initial_nodes.get(0).unwrap().to_string();
-        let manager = RedisMultiplexedConnectionManager::new(addr).unwrap();
+    pub async fn new(info: ConnectionInfo, max_size: u32) -> Result<Self, error::RedisError> {
+        let manager = Manager::new(info.clone())?;
         let pool = bb8::Pool::builder()
             .max_size(max_size)
+            .idle_timeout(Some(Duration::new(60, 0)))
             .build(manager)
-            .await
-            .unwrap();
-        Self { pool }
+            .await?;
+        Ok(Self {
+            pool,
+            info,
+            id: None,
+        })
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use redis::FromRedisValue;
+use redis::{FromRedisValue, IntoConnectionInfo};
 
 use crate::{
     client::Client,
@@ -70,8 +70,10 @@ impl PoolManager {
                 _ => Box::new(Cluster::new(nodes, ms)),
             };
         } else {
-            let pool = BB8Pool::new(nodes, ms).await;
-            self.pool = Box::new(pool);
+            let info = nodes.clone().remove(0).into_connection_info().unwrap();
+            self.pool = match self.pool_type.as_str() {
+                _ => Box::new(BB8Pool::new(info, ms).await.unwrap()),
+            };
         };
         self
     }
