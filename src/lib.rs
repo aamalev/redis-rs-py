@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 mod client;
 mod client_result;
 mod client_result_async;
-mod cluster;
+mod cluster_async;
 mod cluster_bb8;
 mod cluster_deadpool;
 mod error;
