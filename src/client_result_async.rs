@@ -22,7 +22,7 @@ impl ClientResult for AsyncClientResult {
         let cm = self.cm.clone();
         let client_id = client.client_id.clone();
         future_into_py(py, async move {
-            cm.write().await.init().await;
+            cm.write().await.init().await?;
             let result = Client {
                 cr: Box::new(Self { cm }),
                 client_id,

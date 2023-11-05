@@ -33,9 +33,9 @@ pub struct PoolManager {
     pub(crate) is_cluster: bool,
     pub(crate) initial_nodes: Vec<String>,
     pub(crate) max_size: u32,
-    pub(crate) pool_type: String,
     pub(crate) pool: Box<dyn Pool + Send + Sync>,
     pub(crate) client_id: String,
+    pub(crate) features: Vec<types::Feature>,
 }
 
 impl PoolManager {
@@ -44,9 +44,9 @@ impl PoolManager {
             initial_nodes,
             is_cluster: true,
             max_size: 10,
-            pool_type: "cluster_async".to_string(),
             pool: Box::new(ClosedPool),
             client_id: String::default(),
+            features: vec![],
         }
     }
 
@@ -55,32 +55,36 @@ impl PoolManager {
             initial_nodes: vec![addr.to_string()],
             is_cluster: false,
             max_size: 10,
-            pool_type: "bb8".to_string(),
             pool: Box::new(ClosedPool),
             client_id: String::default(),
+            features: vec![],
         }
     }
 
-    pub async fn init(&mut self) -> &Self {
+    pub async fn init(&mut self) -> Result<&Self, error::RedisError> {
         let nodes = self.initial_nodes.clone();
         let ms = self.max_size;
         let is_cluster = self.is_cluster;
         if is_cluster {
-            self.pool = match self.pool_type.as_str() {
-                "bb8" => Box::new(BB8Cluster::new(nodes, ms).await),
-                "dp" => Box::new(DeadPoolCluster::new(nodes, ms)),
-                "shards" => Box::new(AsyncShards::new(nodes, ms, Some(true)).await.unwrap()),
-                _ => Box::new(Cluster::new(nodes, ms).await.unwrap()),
+            self.pool = match self.features.as_slice() {
+                [types::Feature::BB8, ..] => Box::new(BB8Cluster::new(nodes, ms).await),
+                [types::Feature::DeadPool, ..] => Box::new(DeadPoolCluster::new(nodes, ms)),
+                [types::Feature::Shards, ..] => {
+                    Box::new(AsyncShards::new(nodes, ms, Some(true)).await?)
+                }
+                _ => Box::new(Cluster::new(nodes, ms).await?),
             };
         } else {
-            let info = nodes.clone().remove(0).into_connection_info().unwrap();
-            self.pool = match self.pool_type.as_str() {
-                "bb8" => Box::new(BB8Pool::new(info, ms).await.unwrap()),
-                "shards" => Box::new(AsyncShards::new(nodes, ms, Some(false)).await.unwrap()),
-                _ => Box::new(Node::new(info, ms).await.unwrap()),
+            let info = nodes.clone().remove(0).into_connection_info()?;
+            self.pool = match self.features.as_slice() {
+                [types::Feature::BB8, ..] => Box::new(BB8Pool::new(info, ms).await?),
+                [types::Feature::Shards, ..] => {
+                    Box::new(AsyncShards::new(nodes, ms, Some(false)).await?)
+                }
+                _ => Box::new(Node::new(info, ms).await?),
             };
         };
-        self
+        Ok(self)
     }
 
     pub async fn close(&mut self) -> &Self {

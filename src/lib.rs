@@ -16,12 +16,13 @@ mod single_node;
 mod types;
 
 #[pyfunction]
-#[pyo3(signature = (*initial_nodes, max_size=None, cluster=None, client_id=None))]
+#[pyo3(signature = (*initial_nodes, max_size=None, cluster=None, client_id=None, features=None))]
 fn create_client(
     initial_nodes: Vec<String>,
     max_size: Option<u32>,
     cluster: Option<bool>,
     client_id: Option<String>,
+    features: Option<Vec<String>>,
 ) -> PyResult<client::Client> {
     let is_cluster = match cluster {
         None => initial_nodes.len() > 1,
@@ -36,6 +37,13 @@ fn create_client(
             .unwrap_or("redis://localhost:6379");
         pool_manager::PoolManager::new(addr)
     };
+    if let Some(features) = features {
+        cm.features = features
+            .into_iter()
+            .filter_map(|x| types::Feature::try_from(x).ok())
+            .collect();
+        cm.features.sort();
+    }
     if let Some(size) = max_size {
         cm.max_size = size;
     }
