@@ -177,3 +177,23 @@ pub enum ScalarOrMap {
     Scalar(Arg),
     Map(HashMap<String, Arg>),
 }
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum Feature {
+    Shards,
+    BB8,
+    DeadPool,
+}
+
+impl TryFrom<String> for Feature {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.to_ascii_lowercase().as_str() {
+            "shards" => Ok(Feature::Shards),
+            "bb8" => Ok(Feature::BB8),
+            "deadpool" | "dead-pool" | "dead_pool" | "dp" => Ok(Feature::DeadPool),
+            _ => Err("Unknown".to_string()),
+        }
+    }
+}
