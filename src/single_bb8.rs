@@ -11,6 +11,7 @@ use redis::{aio::ConnectionLike, ConnectionInfo};
 type Manager = bb8_redis::RedisMultiplexedConnectionManager;
 type InnerPool = bb8::Pool<Manager>;
 
+#[derive(Clone)]
 pub struct BB8Pool {
     pub info: ConnectionInfo,
     pool: InnerPool,
@@ -64,5 +65,33 @@ impl Pool for BB8Pool {
             redis::Value::Int(state.idle_connections.into()),
         );
         result
+    }
+}
+
+impl ConnectionLike for BB8Pool {
+    fn req_packed_command<'a>(
+        &'a mut self,
+        cmd: &'a redis::Cmd,
+    ) -> redis::RedisFuture<'a, redis::Value> {
+        Box::pin(async move {
+            let mut c = self.pool.get().await.map_err(error::RedisError::from)?;
+            c.req_packed_command(cmd).await
+        })
+    }
+
+    fn req_packed_commands<'a>(
+        &'a mut self,
+        cmd: &'a redis::Pipeline,
+        offset: usize,
+        count: usize,
+    ) -> redis::RedisFuture<'a, Vec<redis::Value>> {
+        Box::pin(async move {
+            let mut c = self.pool.get().await.map_err(error::RedisError::from)?;
+            c.req_packed_commands(cmd, offset, count).await
+        })
+    }
+
+    fn get_db(&self) -> i64 {
+        self.info.redis.db
     }
 }
