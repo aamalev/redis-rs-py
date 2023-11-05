@@ -20,6 +20,16 @@ jobs:
           components: rustfmt
       - name: cargo fmt
         run: cargo fmt --all -- --check
+  clippy:
+    name: Rust clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: cargo clippy
+        run: cargo clippy
   py:
     name: Python linters
     runs-on: ubuntu-latest
