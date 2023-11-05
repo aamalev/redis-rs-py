@@ -1,5 +1,8 @@
 name: Lint
 
+env:
+  RUSTFLAGS: "-Dwarnings"
+
 on:
   push:
     branches:
@@ -20,16 +23,15 @@ jobs:
           components: rustfmt
       - name: cargo fmt
         run: cargo fmt --all -- --check
+
   clippy:
-    name: Rust clippy
+    name: Rust Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - name: cargo clippy
-        run: cargo clippy
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features
+
   py:
     name: Python linters
     runs-on: ubuntu-latest

@@ -26,6 +26,9 @@ redis-rs
 .. image:: https://img.shields.io/badge/Rustc-1.73.0-blue?logo=rust
   :target: https://www.rust-lang.org/
 
+.. image:: https://img.shields.io/badge/cargo-clippy-blue?logo=rust
+  :target: https://doc.rust-lang.org/stable/clippy/
+
 .. image:: https://img.shields.io/badge/PyO3-maturin-blue.svg
   :target: https://github.com/PyO3/maturin
 
