@@ -10,6 +10,7 @@ mod exceptions;
 mod pool;
 mod pool_manager;
 mod single_bb8;
+mod single_node;
 mod types;
 
 #[pyfunction]
