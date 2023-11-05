@@ -9,6 +9,8 @@ mod error;
 mod exceptions;
 mod pool;
 mod pool_manager;
+mod shards;
+mod shards_async;
 mod single_bb8;
 mod single_node;
 mod types;

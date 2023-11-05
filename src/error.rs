@@ -1,8 +1,11 @@
 #[derive(Debug)]
 pub enum RedisError {
+    #[allow(clippy::enum_variant_names)]
     RedisError(redis::RedisError),
     CommandError(String),
     PoolError(redis::RedisError),
+    NotFoundNode,
+    NoSlot,
 }
 
 impl RedisError {
@@ -54,6 +57,12 @@ impl From<RedisError> for redis::RedisError {
     fn from(e: RedisError) -> Self {
         match e {
             RedisError::RedisError(e) => e,
+            RedisError::NotFoundNode => {
+                redis::RedisError::from((redis::ErrorKind::IoError, "Not found node"))
+            }
+            RedisError::NoSlot => {
+                redis::RedisError::from((redis::ErrorKind::IoError, "Not found slot"))
+            }
             RedisError::PoolError(e) => e,
             RedisError::CommandError(_) => todo!(),
         }
