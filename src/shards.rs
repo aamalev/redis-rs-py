@@ -155,7 +155,7 @@ impl Slots {
                 cmd_iter.next();
                 cmd_iter.next()
             }
-            Some(b"BZMPOP" | b"ZDIFFSTORE" | b"ZUNIONSTORE") => {
+            Some(b"EVAL" | b"BZMPOP" | b"ZDIFFSTORE" | b"ZUNIONSTORE") => {
                 cmd_iter.next();
                 cmd_iter.next();
                 cmd_iter.next()
