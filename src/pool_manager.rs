@@ -11,6 +11,7 @@ use crate::{
     error,
     pool::{ClosedPool, Connection, Pool},
     single_bb8::BB8Pool,
+    single_node::Node,
     types,
 };
 
@@ -72,7 +73,8 @@ impl PoolManager {
         } else {
             let info = nodes.clone().remove(0).into_connection_info().unwrap();
             self.pool = match self.pool_type.as_str() {
-                _ => Box::new(BB8Pool::new(info, ms).await.unwrap()),
+                "bb8" => Box::new(BB8Pool::new(info, ms).await.unwrap()),
+                _ => Box::new(Node::new(info, ms).await.unwrap()),
             };
         };
         self
