@@ -12,6 +12,7 @@ use crate::{
     pool::{ClosedPool, Connection, Pool},
     shards_async::AsyncShards,
     single_bb8::BB8Pool,
+    single_deadpool::DeadPool,
     single_node::Node,
     types,
 };
@@ -78,6 +79,7 @@ impl PoolManager {
             let info = nodes.clone().remove(0).into_connection_info()?;
             self.pool = match self.features.as_slice() {
                 [types::Feature::BB8, ..] => Box::new(BB8Pool::new(info, ms).await?),
+                [types::Feature::DeadPool, ..] => Box::new(DeadPool::new(info, ms).await?),
                 [types::Feature::Shards, ..] => {
                     Box::new(AsyncShards::new(nodes, ms, Some(false)).await?)
                 }
