@@ -16,8 +16,8 @@ impl From<error::RedisError> for PyErr {
             error::RedisError::CommandError(s) => RedisError::new_err(s),
             error::RedisError::PoolError(e) => PoolError::new_err(e.to_string()),
             error::RedisError::RedisError(e) => RedisError::new_err(e.to_string()),
-            error::RedisError::NotFoundNode => PoolError::new_err("Not fount node".to_string()),
-            error::RedisError::NoSlot => PoolError::new_err("Not fount slot".to_string()),
+            error::RedisError::NotFoundNode => PoolError::new_err("Not found node".to_string()),
+            error::RedisError::NoSlot => PoolError::new_err("Not found slot".to_string()),
         }
     }
 }
