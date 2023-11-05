@@ -136,6 +136,17 @@ pub enum Arg {
     Int(i64),
 }
 
+impl Arg {
+    pub fn to_vec(&self) -> Vec<u8> {
+        match self {
+            Arg::Bytes(b) => b.clone(),
+            Arg::String(s) => s.clone().into_bytes(),
+            Arg::Float(f) => f.to_string().into_bytes(),
+            Arg::Int(i) => i.to_string().into_bytes(),
+        }
+    }
+}
+
 impl From<Arg> for String {
     fn from(value: Arg) -> Self {
         match value {

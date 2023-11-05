@@ -10,6 +10,7 @@ use crate::{
     cluster_deadpool::DeadPoolCluster,
     error,
     pool::{ClosedPool, Connection, Pool},
+    shards_async::AsyncShards,
     single_bb8::BB8Pool,
     single_node::Node,
     types,
@@ -68,12 +69,14 @@ impl PoolManager {
             self.pool = match self.pool_type.as_str() {
                 "bb8" => Box::new(BB8Cluster::new(nodes, ms).await),
                 "dp" => Box::new(DeadPoolCluster::new(nodes, ms)),
+                "shards" => Box::new(AsyncShards::new(nodes, ms, Some(true)).await.unwrap()),
                 _ => Box::new(Cluster::new(nodes, ms).await.unwrap()),
             };
         } else {
             let info = nodes.clone().remove(0).into_connection_info().unwrap();
             self.pool = match self.pool_type.as_str() {
                 "bb8" => Box::new(BB8Pool::new(info, ms).await.unwrap()),
+                "shards" => Box::new(AsyncShards::new(nodes, ms, Some(false)).await.unwrap()),
                 _ => Box::new(Node::new(info, ms).await.unwrap()),
             };
         };
