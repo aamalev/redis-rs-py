@@ -216,8 +216,8 @@ impl Client {
     ) -> PyResult<&'a PyAny> {
         let cmd = match delta {
             None => redis::cmd("INCR").arg(key).to_owned(),
-            Some(types::Arg::Bytes(b)) => redis::cmd("INCRBY").arg(key).arg(b).to_owned(),
-            Some(types::Arg::String(s)) => redis::cmd("INCRBY").arg(key).arg(s).to_owned(),
+            Some(types::Arg::Bytes(b)) => redis::cmd("INCRBYFLOAT").arg(key).arg(b).to_owned(),
+            Some(types::Arg::String(s)) => redis::cmd("INCRBYFLOAT").arg(key).arg(s).to_owned(),
             Some(types::Arg::Float(f)) => redis::cmd("INCRBYFLOAT").arg(key).arg(f).to_owned(),
             Some(types::Arg::Int(i)) => redis::cmd("INCRBY").arg(key).arg(i).to_owned(),
         };
