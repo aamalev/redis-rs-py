@@ -170,16 +170,15 @@ impl Client {
         self.cr.execute(py, cmd, encoding)
     }
 
-    #[pyo3(signature = (key, field, value))]
+    #[pyo3(signature = (key, *pairs))]
     fn hset<'a>(
         &self,
         py: Python<'a>,
         key: types::Str,
-        field: types::Str,
-        value: types::Arg,
+        pairs: Vec<types::ScalarOrMap>,
     ) -> PyResult<&'a PyAny> {
-        let cmd = redis::cmd("HSET").arg(key).arg(field).arg(value).to_owned();
-        self.cr.execute(py, cmd, String::default())
+        let cmd = redis::cmd("HSET").arg(key).arg(pairs).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key, field, **kwargs))]
