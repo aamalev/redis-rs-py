@@ -6,7 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use bb8_redis_cluster::RedisConnectionManager;
-use redis::aio::ConnectionLike;
+use redis::{aio::ConnectionLike, Cmd};
 
 pub struct BB8Cluster {
     pool: bb8::Pool<RedisConnectionManager>,
