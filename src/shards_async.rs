@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use redis::{
-    aio::ConnectionLike, ConnectionInfo, FromRedisValue, IntoConnectionInfo, RedisError,
+    aio::ConnectionLike, Cmd, ConnectionInfo, FromRedisValue, IntoConnectionInfo, RedisError,
     RedisResult,
 };
 use tokio::sync::RwLock;
@@ -11,7 +11,6 @@ use crate::{
     error,
     pool::{Connection, Pool},
     shards::Slots,
-    types,
 };
 
 type Node = crate::single_node::Node;
@@ -188,13 +187,8 @@ impl Pool for AsyncShards {
         Ok(Connection { c: Box::new(pool) })
     }
 
-    async fn execute(
-        &self,
-        cmd: &str,
-        args: Vec<types::Arg>,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
         let mut pool = self.clone();
-        let cmd = redis::cmd(cmd).arg(&args).to_owned();
         let value = pool.req_packed_command(&cmd).await?;
         Ok(value)
     }

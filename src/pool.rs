@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use crate::error;
-use crate::types;
 use async_trait::async_trait;
 
 use redis::aio::ConnectionLike;
+use redis::Cmd;
 
 pub struct Connection {
     pub(crate) c: Box<dyn ConnectionLike + Send>,
@@ -15,7 +15,7 @@ impl ConnectionLike for Connection {
         &'a mut self,
         cmd: &'a redis::Cmd,
     ) -> redis::RedisFuture<'a, redis::Value> {
-        Box::pin(async move { self.c.req_packed_command(cmd).await })
+        Box::pin(self.c.req_packed_command(cmd))
     }
 
     fn req_packed_commands<'a>(
@@ -24,7 +24,7 @@ impl ConnectionLike for Connection {
         offset: usize,
         count: usize,
     ) -> redis::RedisFuture<'a, Vec<redis::Value>> {
-        Box::pin(async move { self.c.req_packed_commands(cmd, offset, count).await })
+        Box::pin(self.c.req_packed_commands(cmd, offset, count))
     }
 
     fn get_db(&self) -> i64 {
@@ -36,11 +36,7 @@ impl ConnectionLike for Connection {
 pub trait Pool {
     async fn get_connection(&self) -> Result<Connection, error::RedisError>;
 
-    async fn execute(
-        &self,
-        cmd: &str,
-        args: Vec<types::Arg>,
-    ) -> Result<redis::Value, error::RedisError>;
+    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError>;
 
     fn status(&self) -> HashMap<&str, redis::Value>;
 }
@@ -53,11 +49,7 @@ impl Pool for ClosedPool {
         Err(error::RedisError::not_initialized())
     }
 
-    async fn execute(
-        &self,
-        _cmd: &str,
-        _args: Vec<types::Arg>,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, _cmd: Cmd) -> Result<redis::Value, error::RedisError> {
         Err(error::RedisError::not_initialized())
     }
 

@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::{
     error,
     pool::{Connection, Pool},
-    types,
 };
 use async_trait::async_trait;
 use bb8_redis_cluster::RedisConnectionManager;
@@ -34,13 +33,9 @@ impl Pool for BB8Cluster {
         })
     }
 
-    async fn execute(
-        &self,
-        cmd: &str,
-        args: Vec<types::Arg>,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
         let mut conn = self.pool.get().await?;
-        let value = conn.req_packed_command(redis::cmd(cmd).arg(&args)).await?;
+        let value = conn.req_packed_command(&cmd).await?;
         Ok(value)
     }
 

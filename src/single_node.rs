@@ -3,14 +3,13 @@ use std::{collections::HashMap, sync::Arc};
 use async_trait::async_trait;
 use redis::{
     aio::{ConnectionLike, MultiplexedConnection},
-    Client, ConnectionInfo,
+    Client, Cmd, ConnectionInfo,
 };
 use tokio::sync::Semaphore;
 
 use crate::{
     error,
     pool::{Connection, Pool},
-    types,
 };
 
 #[derive(Clone)]
@@ -47,18 +46,14 @@ impl Pool for Node {
         Ok(Connection { c: Box::new(c) })
     }
 
-    async fn execute(
-        &self,
-        cmd: &str,
-        args: Vec<types::Arg>,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
         let _ = self
             .semaphore
             .acquire()
             .await
             .map_err(error::RedisError::from)?;
         let mut c = self.connection.clone();
-        let value = c.req_packed_command(redis::cmd(cmd).arg(&args)).await?;
+        let value = c.req_packed_command(&cmd).await?;
         Ok(value)
     }
 
