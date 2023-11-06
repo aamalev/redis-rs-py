@@ -67,8 +67,9 @@ impl Client {
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
         let encoding = self.get_encoding(kwargs);
-        self.cr.execute(py, cmd, args, encoding)
+        self.cr.execute(py, cmd, encoding)
     }
 
     #[pyo3(signature = (cmd, *args))]
@@ -78,7 +79,9 @@ impl Client {
         cmd: types::Str,
         args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
-        self.cr.fetch_str(py, cmd.into(), args)
+        let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
+        self.cr.fetch_str(py, cmd)
     }
 
     #[pyo3(signature = (cmd, *args))]
@@ -88,7 +91,9 @@ impl Client {
         cmd: types::Str,
         args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
-        self.cr.fetch_bytes(py, cmd.into(), args)
+        let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
+        self.cr.fetch_bytes(py, cmd)
     }
 
     #[pyo3(signature = (cmd, *args))]
@@ -98,7 +103,9 @@ impl Client {
         cmd: types::Str,
         args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
-        self.cr.fetch_list(py, cmd.into(), args)
+        let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
+        self.cr.fetch_list(py, cmd)
     }
 
     #[pyo3(signature = (cmd, *args, **kwargs))]
@@ -110,8 +117,9 @@ impl Client {
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
         let encoding = self.get_encoding(kwargs);
-        self.cr.fetch_dict(py, cmd, args, encoding)
+        self.cr.fetch_dict(py, cmd, encoding)
     }
 
     #[pyo3(signature = (cmd, *args))]
@@ -121,7 +129,9 @@ impl Client {
         cmd: types::Str,
         args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
-        self.cr.fetch_scores(py, cmd.into(), args)
+        let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
+        self.cr.fetch_scores(py, cmd)
     }
 
     #[pyo3(signature = (cmd, *args))]
@@ -131,17 +141,21 @@ impl Client {
         cmd: types::Str,
         args: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
-        self.cr.fetch_int(py, cmd.into(), args)
+        let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key))]
     fn exists<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny> {
-        self.cr.exists(py, key)
+        let cmd = redis::cmd("EXISTS").arg(key).to_owned();
+        self.cr.execute(py, cmd, String::default())
     }
 
     #[pyo3(signature = (key, value))]
     fn set<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
-        self.cr.set(py, key, value)
+        let cmd = redis::cmd("SET").arg(key).arg(value).to_owned();
+        self.cr.execute(py, cmd, String::default())
     }
 
     #[pyo3(signature = (key, **kwargs))]
@@ -152,7 +166,8 @@ impl Client {
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let encoding = self.get_encoding(kwargs);
-        self.cr.get(py, key.into(), encoding)
+        let cmd = redis::cmd("GET").arg(key).to_owned();
+        self.cr.execute(py, cmd, encoding)
     }
 
     #[pyo3(signature = (key, field, value))]
@@ -163,7 +178,8 @@ impl Client {
         field: types::Str,
         value: types::Arg,
     ) -> PyResult<&'a PyAny> {
-        self.cr.hset(py, key, field, value)
+        let cmd = redis::cmd("HSET").arg(key).arg(field).arg(value).to_owned();
+        self.cr.execute(py, cmd, String::default())
     }
 
     #[pyo3(signature = (key, field, **kwargs))]
@@ -175,7 +191,8 @@ impl Client {
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let encoding = self.get_encoding(kwargs);
-        self.cr.hget(py, key, field, encoding)
+        let cmd = redis::cmd("HGET").arg(key).arg(field).to_owned();
+        self.cr.execute(py, cmd, encoding)
     }
 
     #[pyo3(signature = (key, **kwargs))]
@@ -186,17 +203,31 @@ impl Client {
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let encoding = self.get_encoding(kwargs);
-        self.cr.hgetall(py, key, encoding)
+        let cmd = redis::cmd("HGETALL").arg(key).to_owned();
+        self.cr.fetch_dict(py, cmd, encoding)
     }
 
-    #[pyo3(signature = (key, delta = 1.0))]
-    fn incr<'a>(&self, py: Python<'a>, key: types::Str, delta: f64) -> PyResult<&'a PyAny> {
-        self.cr.incr(py, key, delta)
+    #[pyo3(signature = (key, delta = None))]
+    fn incr<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        delta: Option<types::Arg>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = match delta {
+            None => redis::cmd("INCR").arg(key).to_owned(),
+            Some(types::Arg::Bytes(b)) => redis::cmd("INCRBYFLOAT").arg(key).arg(b).to_owned(),
+            Some(types::Arg::String(s)) => redis::cmd("INCRBYFLOAT").arg(key).arg(s).to_owned(),
+            Some(types::Arg::Float(f)) => redis::cmd("INCRBYFLOAT").arg(key).arg(f).to_owned(),
+            Some(types::Arg::Int(i)) => redis::cmd("INCRBY").arg(key).arg(i).to_owned(),
+        };
+        self.cr.fetch_float(py, cmd)
     }
 
     #[pyo3(signature = (key, value))]
     fn lpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
-        self.cr.lpush(py, key, value)
+        let cmd = redis::cmd("LPUSH").arg(key).arg(value).to_owned();
+        self.cr.execute(py, cmd, String::default())
     }
 
     #[pyo3(signature = (key, count = None, **kwargs))]
@@ -208,7 +239,8 @@ impl Client {
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let encoding = self.get_encoding(kwargs);
-        self.cr.lpop(py, key, count, encoding)
+        let cmd = redis::cmd("LPOP").arg(key).arg(count).to_owned();
+        self.cr.execute(py, cmd, encoding)
     }
 
     #[pyo3(signature = (key, start = 0, stop = -1, **kwargs))]
@@ -221,7 +253,12 @@ impl Client {
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let encoding = self.get_encoding(kwargs);
-        self.cr.lrange(py, key, start, stop, encoding)
+        let cmd = redis::cmd("LRANGE")
+            .arg(key)
+            .arg(start)
+            .arg(stop)
+            .to_owned();
+        self.cr.execute(py, cmd, encoding)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -261,7 +298,13 @@ impl Client {
             }
         });
         let id = id.unwrap_or(types::Str::String("*".to_string()));
-        self.cr.xadd(py, stream, id, map, maxlen)
+        let cmd = redis::cmd("XADD")
+            .arg(stream)
+            .arg(maxlen)
+            .arg(id)
+            .arg(map)
+            .to_owned();
+        self.cr.fetch_str(py, cmd)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -290,10 +333,13 @@ impl Client {
         if let Some(true) = noack {
             options = options.noack();
         }
-        if let Some(g) = group {
+        let mut cmd = redis::cmd(if let Some(g) = group {
             options = options.group(g, self.client_id.clone());
             id = types::Arg::Bytes(b">".to_vec());
-        }
+            "XREADGROUP"
+        } else {
+            "XREAD"
+        });
         let mut keys = vec![];
         let mut ids = vec![];
         match streams {
@@ -312,7 +358,8 @@ impl Client {
                 }
             }
         }
-        self.cr.xread(py, keys, ids, options, encoding)
+        cmd.arg(options).arg("STREAMS").arg(keys).arg(ids);
+        self.cr.fetch_dict(py, cmd, encoding)
     }
 
     #[pyo3(signature = (key, group, *id))]
@@ -323,6 +370,7 @@ impl Client {
         group: types::Str,
         id: Vec<types::Str>,
     ) -> PyResult<&'a PyAny> {
-        self.cr.xack(py, key, group, id)
+        let cmd = redis::cmd("XACK").arg(key).arg(group).arg(id).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 }

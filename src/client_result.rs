@@ -1,12 +1,9 @@
-use std::{collections::HashMap, num::NonZeroUsize};
+use std::collections::HashMap;
 
 use pyo3::prelude::*;
-use redis::{
-    streams::{StreamMaxlen, StreamReadOptions},
-    Value,
-};
+use redis::{Cmd, Value};
 
-use crate::{client::Client, error, types};
+use crate::{client::Client, error};
 
 pub trait ClientResult {
     fn init<'a>(&self, py: Python<'a>, client: &Client) -> PyResult<&'a PyAny>;
@@ -18,107 +15,12 @@ pub trait ClientResult {
         traceback: &PyAny,
     ) -> PyResult<&'a PyAny>;
     fn status(&self) -> Result<HashMap<String, Value>, error::RedisError>;
-    fn execute<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: String,
-        args: Vec<types::Arg>,
-        encoding: String,
-    ) -> PyResult<&'a PyAny>;
-    fn fetch_str<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: String,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny>;
-    fn fetch_bytes<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: String,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny>;
-    fn fetch_list<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: String,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny>;
-    fn fetch_dict<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: String,
-        args: Vec<types::Arg>,
-        encoding: String,
-    ) -> PyResult<&'a PyAny>;
-    fn fetch_scores<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: String,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny>;
-    fn fetch_int<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: String,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny>;
-    fn exists<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny>;
-    fn set<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny>;
-    fn get<'a>(&self, py: Python<'a>, key: String, encoding: String) -> PyResult<&'a PyAny>;
-    fn incr<'a>(&self, py: Python<'a>, key: types::Str, delta: f64) -> PyResult<&'a PyAny>;
-    fn hset<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        field: types::Str,
-        value: types::Arg,
-    ) -> PyResult<&'a PyAny>;
-    fn hget<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        field: types::Str,
-        encoding: String,
-    ) -> PyResult<&'a PyAny>;
-    fn hgetall<'a>(&self, py: Python<'a>, key: types::Str, encoding: String)
-        -> PyResult<&'a PyAny>;
-    fn lpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny>;
-    fn lpop<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        count: Option<NonZeroUsize>,
-        encoding: String,
-    ) -> PyResult<&'a PyAny>;
-    fn lrange<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        start: isize,
-        stop: isize,
-        encoding: String,
-    ) -> PyResult<&'a PyAny>;
-    fn xadd<'a>(
-        &self,
-        py: Python<'a>,
-        stream: types::Str,
-        id: types::Str,
-        map: HashMap<String, types::Arg>,
-        maxlen: Option<StreamMaxlen>,
-    ) -> PyResult<&'a PyAny>;
-    fn xread<'a>(
-        &self,
-        py: Python<'a>,
-        streams: Vec<String>,
-        ids: Vec<types::Arg>,
-        options: StreamReadOptions,
-        encoding: String,
-    ) -> PyResult<&'a PyAny>;
-    fn xack<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        group: types::Str,
-        id: Vec<types::Str>,
-    ) -> PyResult<&'a PyAny>;
+    fn execute<'a>(&self, py: Python<'a>, cmd: Cmd, encoding: String) -> PyResult<&'a PyAny>;
+    fn fetch_str<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
+    fn fetch_bytes<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
+    fn fetch_list<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
+    fn fetch_dict<'a>(&self, py: Python<'a>, cmd: Cmd, encoding: String) -> PyResult<&'a PyAny>;
+    fn fetch_scores<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
+    fn fetch_int<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
+    fn fetch_float<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
 }

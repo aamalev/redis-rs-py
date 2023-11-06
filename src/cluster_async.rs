@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use crate::{
     error,
     pool::{Connection, Pool},
-    types,
 };
 use async_trait::async_trait;
-use redis::{aio::ConnectionLike, cluster::ClusterClient};
+use redis::{aio::ConnectionLike, cluster::ClusterClient, Cmd};
 use tokio::sync::Semaphore;
 
 pub struct Cluster {
@@ -34,14 +33,10 @@ impl Pool for Cluster {
         Ok(Connection { c: Box::new(c) })
     }
 
-    async fn execute(
-        &self,
-        cmd: &str,
-        args: Vec<types::Arg>,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
         let _ = self.semaphore.acquire().await?;
         let mut conn = self.connection.clone();
-        let value = conn.req_packed_command(redis::cmd(cmd).arg(&args)).await?;
+        let value = conn.req_packed_command(&cmd).await?;
         Ok(value)
     }
 

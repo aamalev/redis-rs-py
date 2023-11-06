@@ -1,11 +1,10 @@
 use crate::{
     error,
     pool::{Connection, Pool},
-    types,
 };
 use async_trait::async_trait;
 use deadpool_redis::{Config, CreatePoolError, Runtime};
-use redis::{aio::ConnectionLike, ConnectionInfo};
+use redis::{aio::ConnectionLike, Cmd, ConnectionInfo};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -45,13 +44,9 @@ impl Pool for DeadPool {
         Ok(Connection { c: Box::new(c) })
     }
 
-    async fn execute(
-        &self,
-        cmd: &str,
-        args: Vec<types::Arg>,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
         let mut conn = self.pool.get().await.expect("Error with redis pool");
-        let value = conn.req_packed_command(redis::cmd(cmd).arg(&args)).await?;
+        let value = conn.req_packed_command(&cmd).await?;
         Ok(value)
     }
 
