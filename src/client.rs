@@ -194,6 +194,19 @@ impl Client {
         self.cr.execute(py, cmd, encoding)
     }
 
+    #[pyo3(signature = (key, *fields, **kwargs))]
+    fn hmget<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        fields: Vec<types::Str>,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<&'a PyAny> {
+        let encoding = self.get_encoding(kwargs);
+        let cmd = redis::cmd("HMGET").arg(key).arg(fields).to_owned();
+        self.cr.execute(py, cmd, encoding)
+    }
+
     #[pyo3(signature = (key, **kwargs))]
     fn hgetall<'a>(
         &self,
@@ -204,6 +217,28 @@ impl Client {
         let encoding = self.get_encoding(kwargs);
         let cmd = redis::cmd("HGETALL").arg(key).to_owned();
         self.cr.fetch_dict(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (key, field))]
+    fn hexists<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        field: types::Arg,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("HEXISTS").arg(key).arg(field).to_owned();
+        self.cr.fetch_bool(py, cmd)
+    }
+
+    #[pyo3(signature = (key, *fields))]
+    fn hdel<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        fields: Vec<types::Arg>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("HDEL").arg(key).arg(fields).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key, delta = None))]

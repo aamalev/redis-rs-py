@@ -112,6 +112,15 @@ impl ClientResult for AsyncClientResult {
         })
     }
 
+    fn fetch_bool<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny> {
+        let cm = self.cm.clone();
+        future_into_py(py, async move {
+            let cm = cm.read().await;
+            let result: bool = cm.execute(cmd).await?;
+            Ok(result)
+        })
+    }
+
     fn fetch_int<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
         future_into_py(py, async move {
