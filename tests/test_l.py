@@ -60,8 +60,8 @@ async def test_lpop(async_client: redis_rs.AsyncClient):
     n = await async_client.lpush(key, 3)
     assert n == 2
 
-    n = await async_client.lpop(key, encoding="int")
-    assert n == 3
+    result = await async_client.lpop(key, encoding="int")
+    assert result == 3
 
     n = await async_client.lpush(key, 4)
     assert n == 2
