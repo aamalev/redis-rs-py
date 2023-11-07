@@ -24,8 +24,10 @@ async def test_hset_map(async_client: redis_rs.AsyncClient):
     key = str(uuid4())
     n = await async_client.hset(key, {"a": "2", "b": b"3"})
     assert n == 2
+    n = await async_client.hset(key, mapping={"x": "1", "z": b"4"})
+    assert n == 2
     result = await async_client.hgetall(key, encoding="float")
-    assert result == {"a": 2.0, "b": 3.0}
+    assert result == {"a": 2.0, "b": 3.0, "x": 1.0, "z": 4.0}
     assert isinstance(result, dict)
 
 
