@@ -1,6 +1,6 @@
 use crate::{client_result::ClientResult, types};
 use pyo3::{prelude::*, types::PyDict};
-use redis::streams::{StreamMaxlen, StreamReadOptions};
+use redis::streams::StreamReadOptions;
 use std::{collections::HashMap, num::NonZeroUsize};
 
 #[pyclass]
@@ -324,48 +324,72 @@ impl Client {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[pyo3(signature = (stream, *args, id = None, items = None, maxlen = None, approx = true))]
+    #[pyo3(signature = (
+        stream, *args,
+        id = None,
+        items = None,
+        mkstream = true,
+        maxlen = None,
+        minid = None,
+        approx = true,
+        limit = None,
+    ))]
     fn xadd<'a>(
         &self,
         py: Python<'a>,
         stream: types::Str,
         mut args: Vec<types::ScalarOrMap>,
-        mut id: Option<types::Str>,
+        id: Option<types::Str>,
         items: Option<HashMap<String, types::Arg>>,
+        mkstream: bool,
         maxlen: Option<usize>,
+        minid: Option<usize>,
         approx: bool,
+        limit: Option<usize>,
     ) -> PyResult<&'a PyAny> {
-        args.push(types::ScalarOrMap::Map(items.unwrap_or_default()));
-        let mut map = HashMap::new();
-        let mut flat = vec![];
+        let mut cmd = redis::cmd("XADD").arg(stream).to_owned();
 
-        for arg in args.into_iter() {
-            match arg {
-                types::ScalarOrMap::Map(aitems) => map.extend(aitems),
-                types::ScalarOrMap::Scalar(s) => flat.push(s),
-            };
+        if !mkstream {
+            cmd.arg(b"NOMKSTREAM");
         }
 
-        if flat.len() % 2 == 1 {
-            id = Some(types::Str::String(flat.remove(0).into()));
+        if let Some(threshold) = maxlen {
+            cmd.arg(b"MAXLEN")
+                .arg(if approx { b"~" } else { b"=" })
+                .arg(threshold);
         }
-        while !flat.is_empty() {
-            map.insert(flat.remove(0).into(), flat.remove(0));
+        if let Some(threshold) = minid {
+            cmd.arg(b"MINID")
+                .arg(if approx { b"~" } else { b"=" })
+                .arg(threshold);
         }
-        let maxlen = maxlen.map(|x| {
-            if approx {
-                StreamMaxlen::Approx(x)
-            } else {
-                StreamMaxlen::Equals(x)
+        if let Some(limit) = limit {
+            cmd.arg("LIMIT").arg(limit);
+        }
+
+        if let Some(id) = id {
+            cmd.arg(id);
+        } else if args.is_empty() {
+            cmd.arg(b"*");
+        } else {
+            match args.remove(0) {
+                types::ScalarOrMap::Map(m) => {
+                    cmd.arg(b"*");
+                    cmd.arg(m);
+                }
+                types::ScalarOrMap::Scalar(arg) => {
+                    if let Ok(id) = arg.to_normalized_stream_msg_id() {
+                        cmd.arg(id);
+                    } else {
+                        cmd.arg(b"*");
+                        cmd.arg(arg);
+                    }
+                }
             }
-        });
-        let id = id.unwrap_or(types::Str::String("*".to_string()));
-        let cmd = redis::cmd("XADD")
-            .arg(stream)
-            .arg(maxlen)
-            .arg(id)
-            .arg(map)
-            .to_owned();
+        };
+
+        cmd.arg(args).arg(items);
+
         self.cr.fetch_str(py, cmd)
     }
 

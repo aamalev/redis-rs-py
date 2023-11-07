@@ -68,3 +68,32 @@ impl From<RedisError> for redis::RedisError {
         }
     }
 }
+
+#[derive(Debug)]
+pub(crate) struct ValueError {
+    _err: String,
+}
+
+impl From<std::string::FromUtf8Error> for ValueError {
+    fn from(value: std::string::FromUtf8Error) -> Self {
+        Self {
+            _err: value.to_string(),
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for ValueError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        Self {
+            _err: value.to_string(),
+        }
+    }
+}
+
+impl From<std::num::ParseFloatError> for ValueError {
+    fn from(value: std::num::ParseFloatError) -> Self {
+        Self {
+            _err: value.to_string(),
+        }
+    }
+}

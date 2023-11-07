@@ -6,6 +6,8 @@ use pyo3::{
 };
 use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
 
+use crate::error;
+
 fn _decode(
     py: Python,
     v: Vec<u8>,
@@ -124,7 +126,7 @@ impl ToRedisArgs for Str {
     }
 }
 
-#[derive(FromPyObject, Clone)]
+#[derive(FromPyObject, Clone, Debug)]
 pub enum Arg {
     #[pyo3(transparent, annotation = "bytes")]
     Bytes(Vec<u8>),
@@ -143,6 +145,28 @@ impl Arg {
             Arg::String(s) => s.clone().into_bytes(),
             Arg::Float(f) => f.to_string().into_bytes(),
             Arg::Int(i) => i.to_string().into_bytes(),
+        }
+    }
+}
+
+impl Arg {
+    pub(crate) fn to_normalized_stream_msg_id(&self) -> Result<String, error::ValueError> {
+        fn from_str(s: &str) -> Result<String, error::ValueError> {
+            if !s.eq("*") {
+                if let Some(s) = s.strip_suffix("-*") {
+                    s.parse::<u64>()?;
+                } else {
+                    s.replace('-', ".").parse::<f64>()?;
+                }
+            }
+            Ok(s.to_string())
+        }
+
+        match self {
+            Self::String(s) => from_str(s),
+            Self::Bytes(b) => from_str(String::from_utf8(b.to_vec())?.as_str()),
+            Self::Float(f) => Ok(f.to_string().replace('.', "-")),
+            Self::Int(i) => Ok(i.to_string()),
         }
     }
 }
@@ -207,5 +231,76 @@ impl TryFrom<String> for Feature {
             "deadpool" | "dead-pool" | "dead_pool" | "dp" => Ok(Feature::DeadPool),
             _ => Err("Unknown".to_string()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::Arg;
+
+    #[test]
+    fn stream_msg_id_star() {
+        let id = Arg::Bytes(b"*".to_vec());
+
+        assert_eq!(id.to_normalized_stream_msg_id().unwrap(), "*".to_string(),);
+    }
+
+    #[test]
+    fn stream_msg_id_tail_star() {
+        let id = Arg::Bytes(b"1-*".to_vec());
+
+        assert_eq!(id.to_normalized_stream_msg_id().unwrap(), "1-*".to_string(),);
+    }
+
+    #[test]
+    fn stream_msg_id_double_star() {
+        let id = Arg::Bytes(b"*-*".to_vec());
+
+        assert!(id.to_normalized_stream_msg_id().is_err());
+    }
+
+    #[test]
+    fn stream_msg_id_float() {
+        let id = Arg::Float(1.2345678);
+
+        assert_eq!(
+            id.to_normalized_stream_msg_id().unwrap(),
+            "1-2345678".to_string(),
+        );
+    }
+
+    #[test]
+    fn stream_msg_id_float_int() {
+        let id = Arg::Float(1.0);
+
+        assert_eq!(id.to_normalized_stream_msg_id().unwrap(), "1".to_string(),);
+    }
+
+    #[test]
+    fn stream_msg_id_int() {
+        let id = Arg::Int(1);
+
+        assert_eq!(id.to_normalized_stream_msg_id().unwrap(), "1".to_string(),);
+    }
+
+    #[test]
+    fn stream_msg_id_str() {
+        let id = Arg::String("1".to_string());
+
+        assert_eq!(id.to_normalized_stream_msg_id().unwrap(), "1".to_string(),);
+    }
+
+    #[test]
+    fn stream_msg_id_bytes() {
+        let id = Arg::Bytes(b"1".to_vec());
+
+        assert_eq!(id.to_normalized_stream_msg_id().unwrap(), "1".to_string(),);
+    }
+
+    #[test]
+    fn stream_msg_id_alfa() {
+        let id = Arg::Bytes(b"a".to_vec());
+
+        assert!(id.to_normalized_stream_msg_id().is_err());
     }
 }

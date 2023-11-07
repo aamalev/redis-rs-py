@@ -44,8 +44,11 @@ class AsyncClient:
         id: str,
         items: Dict[str, Arg],
         *,
+        mkstream: bool = True,
         maxlen: Optional[int] = None,
+        minid: Optional[int] = None,
         approx: bool = True,
+        limit: Optional[int] = None,
     ) -> str: ...
     @overload
     async def xadd(
@@ -54,8 +57,11 @@ class AsyncClient:
         items: Dict[str, Arg],
         *,
         id: str = "*",
+        mkstream: bool = True,
         maxlen: Optional[int] = None,
+        minid: Optional[int] = None,
         approx: bool = True,
+        limit: Optional[int] = None,
     ) -> str: ...
     @overload
     async def xadd(
@@ -63,8 +69,11 @@ class AsyncClient:
         stream: str,
         *args: Arg,
         id: str = "*",
+        mkstream: bool = True,
         maxlen: Optional[int] = None,
+        minid: Optional[int] = None,
         approx: bool = True,
+        limit: Optional[int] = None,
     ) -> str: ...
     @overload
     async def xread(
