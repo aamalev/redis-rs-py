@@ -261,7 +261,13 @@ impl Client {
     #[pyo3(signature = (key, value))]
     fn lpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
         let cmd = redis::cmd("LPUSH").arg(key).arg(value).to_owned();
-        self.cr.execute(py, cmd, String::default())
+        self.cr.fetch_int(py, cmd)
+    }
+
+    #[pyo3(signature = (key, value))]
+    fn rpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("RPUSH").arg(key).arg(value).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key, count = None, **kwargs))]
@@ -274,6 +280,19 @@ impl Client {
     ) -> PyResult<&'a PyAny> {
         let encoding = self.get_encoding(kwargs);
         let cmd = redis::cmd("LPOP").arg(key).arg(count).to_owned();
+        self.cr.execute(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (*keys, timeout, **kwargs))]
+    fn blpop<'a>(
+        &self,
+        py: Python<'a>,
+        keys: Vec<types::Str>,
+        timeout: f64,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<&'a PyAny> {
+        let encoding = self.get_encoding(kwargs);
+        let cmd = redis::cmd("BLPOP").arg(keys).arg(timeout).to_owned();
         self.cr.execute(py, cmd, encoding)
     }
 
@@ -293,6 +312,16 @@ impl Client {
             .arg(stop)
             .to_owned();
         self.cr.execute(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (key))]
+    fn llen<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("LLEN").arg(key).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[allow(clippy::too_many_arguments)]
