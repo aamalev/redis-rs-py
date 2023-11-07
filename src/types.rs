@@ -178,6 +178,18 @@ pub enum ScalarOrMap {
     Map(HashMap<String, Arg>),
 }
 
+impl ToRedisArgs for ScalarOrMap {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        match self {
+            ScalarOrMap::Map(m) => m.write_redis_args(out),
+            ScalarOrMap::Scalar(a) => a.write_redis_args(out),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Feature {
     Shards,

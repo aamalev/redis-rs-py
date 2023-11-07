@@ -170,16 +170,20 @@ impl Client {
         self.cr.execute(py, cmd, encoding)
     }
 
-    #[pyo3(signature = (key, field, value))]
+    #[pyo3(signature = (key, *pairs, mapping = None))]
     fn hset<'a>(
         &self,
         py: Python<'a>,
         key: types::Str,
-        field: types::Str,
-        value: types::Arg,
+        pairs: Vec<types::ScalarOrMap>,
+        mapping: Option<types::ScalarOrMap>,
     ) -> PyResult<&'a PyAny> {
-        let cmd = redis::cmd("HSET").arg(key).arg(field).arg(value).to_owned();
-        self.cr.execute(py, cmd, String::default())
+        let cmd = redis::cmd("HSET")
+            .arg(key)
+            .arg(pairs)
+            .arg(mapping)
+            .to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key, field, **kwargs))]
@@ -195,6 +199,19 @@ impl Client {
         self.cr.execute(py, cmd, encoding)
     }
 
+    #[pyo3(signature = (key, *fields, **kwargs))]
+    fn hmget<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        fields: Vec<types::Str>,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<&'a PyAny> {
+        let encoding = self.get_encoding(kwargs);
+        let cmd = redis::cmd("HMGET").arg(key).arg(fields).to_owned();
+        self.cr.execute(py, cmd, encoding)
+    }
+
     #[pyo3(signature = (key, **kwargs))]
     fn hgetall<'a>(
         &self,
@@ -205,6 +222,28 @@ impl Client {
         let encoding = self.get_encoding(kwargs);
         let cmd = redis::cmd("HGETALL").arg(key).to_owned();
         self.cr.fetch_dict(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (key, field))]
+    fn hexists<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        field: types::Arg,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("HEXISTS").arg(key).arg(field).to_owned();
+        self.cr.fetch_bool(py, cmd)
+    }
+
+    #[pyo3(signature = (key, *fields))]
+    fn hdel<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        fields: Vec<types::Arg>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("HDEL").arg(key).arg(fields).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key, delta = None))]
@@ -227,7 +266,13 @@ impl Client {
     #[pyo3(signature = (key, value))]
     fn lpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
         let cmd = redis::cmd("LPUSH").arg(key).arg(value).to_owned();
-        self.cr.execute(py, cmd, String::default())
+        self.cr.fetch_int(py, cmd)
+    }
+
+    #[pyo3(signature = (key, value))]
+    fn rpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("RPUSH").arg(key).arg(value).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key, count = None, **kwargs))]
@@ -240,6 +285,19 @@ impl Client {
     ) -> PyResult<&'a PyAny> {
         let encoding = self.get_encoding(kwargs);
         let cmd = redis::cmd("LPOP").arg(key).arg(count).to_owned();
+        self.cr.execute(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (*keys, timeout, **kwargs))]
+    fn blpop<'a>(
+        &self,
+        py: Python<'a>,
+        keys: Vec<types::Str>,
+        timeout: f64,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<&'a PyAny> {
+        let encoding = self.get_encoding(kwargs);
+        let cmd = redis::cmd("BLPOP").arg(keys).arg(timeout).to_owned();
         self.cr.execute(py, cmd, encoding)
     }
 
@@ -259,6 +317,12 @@ impl Client {
             .arg(stop)
             .to_owned();
         self.cr.execute(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (key))]
+    fn llen<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("LLEN").arg(key).to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[allow(clippy::too_many_arguments)]

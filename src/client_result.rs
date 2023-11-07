@@ -21,6 +21,7 @@ pub trait ClientResult {
     fn fetch_list<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
     fn fetch_dict<'a>(&self, py: Python<'a>, cmd: Cmd, encoding: String) -> PyResult<&'a PyAny>;
     fn fetch_scores<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
+    fn fetch_bool<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
     fn fetch_int<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
     fn fetch_float<'a>(&self, py: Python<'a>, cmd: Cmd) -> PyResult<&'a PyAny>;
 }
