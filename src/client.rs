@@ -246,19 +246,17 @@ impl Client {
         self.cr.fetch_int(py, cmd)
     }
 
-    #[pyo3(signature = (key, delta = None))]
+    #[pyo3(signature = (key, increment = None))]
     fn incr<'a>(
         &self,
         py: Python<'a>,
         key: types::Str,
-        delta: Option<types::Arg>,
+        increment: Option<types::Arg>,
     ) -> PyResult<&'a PyAny> {
-        let cmd = match delta {
+        let cmd = match increment {
             None => redis::cmd("INCR").arg(key).to_owned(),
-            Some(types::Arg::Bytes(b)) => redis::cmd("INCRBYFLOAT").arg(key).arg(b).to_owned(),
-            Some(types::Arg::String(s)) => redis::cmd("INCRBYFLOAT").arg(key).arg(s).to_owned(),
-            Some(types::Arg::Float(f)) => redis::cmd("INCRBYFLOAT").arg(key).arg(f).to_owned(),
             Some(types::Arg::Int(i)) => redis::cmd("INCRBY").arg(key).arg(i).to_owned(),
+            Some(arg) => redis::cmd("INCRBYFLOAT").arg(key).arg(arg).to_owned(),
         };
         self.cr.fetch_float(py, cmd)
     }
