@@ -315,11 +315,7 @@ impl Client {
     }
 
     #[pyo3(signature = (key))]
-    fn llen<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-    ) -> PyResult<&'a PyAny> {
+    fn llen<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny> {
         let cmd = redis::cmd("LLEN").arg(key).to_owned();
         self.cr.fetch_int(py, cmd)
     }
