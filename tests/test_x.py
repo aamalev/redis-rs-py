@@ -39,6 +39,15 @@ async def test_xadd_flat(async_client: redis_rs.AsyncClient):
     assert isinstance(ident, str)
 
 
+@pytest.mark.redis(version=7)
+@pytest.mark.parametrize("id", ["2-*", b"3-*"])
+async def test_xadd_flat_id_star(id, async_client: redis_rs.AsyncClient):
+    stream = str(uuid4())
+
+    ident = await async_client.xadd(stream, id, "a", "b", minid=1)
+    assert isinstance(ident, str), ident
+
+
 @pytest.mark.parametrize(
     "id",
     [
@@ -47,8 +56,6 @@ async def test_xadd_flat(async_client: redis_rs.AsyncClient):
         1.01,
         "1-0",
         "1-1",
-        "2-*",
-        b"3-*",
         1.00001,
         time.time(),
         int(time.time()),
