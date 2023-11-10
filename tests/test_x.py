@@ -1,3 +1,4 @@
+import time
 from uuid import uuid4
 
 import pytest
@@ -11,13 +12,70 @@ async def test_xadd(async_client: redis_rs.AsyncClient):
     ident = await async_client.xadd(stream, {"a": "bcd"})
     assert isinstance(ident, str)
 
+    ident = await async_client.xadd(stream, {"a": "bcd"}, maxlen=2, approx=True, limit=5)
+    assert isinstance(ident, str)
+
     ident = await async_client.xadd(stream, {"a": "bcd"}, maxlen=2, approx=True)
     assert isinstance(ident, str)
 
+    ident = await async_client.xadd(stream, {"a": "bcd"}, minid=2, approx=True, limit=5)
+    assert isinstance(ident, str)
 
-@pytest.mark.redis(single=True)
-async def test_xread(async_client: redis_rs.AsyncClient):
+    ident = await async_client.xadd(stream, {"a": "bcd"}, minid=2, approx=True)
+    assert isinstance(ident, str)
+
+
+async def test_xadd_nomkstream(async_client: redis_rs.AsyncClient):
     stream = str(uuid4())
+
+    ident = await async_client.xadd(stream, {"a": "bcd"}, mkstream=False)
+    assert ident is None
+
+
+async def test_xadd_flat(async_client: redis_rs.AsyncClient):
+    stream = str(uuid4())
+
+    ident = await async_client.xadd(stream, "a", "b", "c", "d")
+    assert isinstance(ident, str)
+
+
+@pytest.mark.redis(version=7)
+@pytest.mark.parametrize("id", ["2-*", b"3-*"])
+async def test_xadd_flat_id_star(id, async_client: redis_rs.AsyncClient):
+    stream = str(uuid4())
+
+    ident = await async_client.xadd(stream, id, "a", "b", minid=1)
+    assert isinstance(ident, str), ident
+
+
+@pytest.mark.parametrize(
+    "id",
+    [
+        1,
+        1.0,
+        1.01,
+        "1-0",
+        "1-1",
+        1.00001,
+        time.time(),
+        int(time.time()),
+        time.time() * 1000,
+        str(int(time.time())),
+        str(time.time()).replace(".", "-"),
+        str(int(time.time())).encode("utf-8"),
+    ],
+)
+async def test_xadd_flat_id(id, async_client: redis_rs.AsyncClient):
+    stream = str(uuid4())
+
+    ident = await async_client.xadd(stream, id, "a", "b", minid=1)
+    assert isinstance(ident, str), ident
+
+
+async def test_xread(async_client: redis_rs.AsyncClient):
+    stream = str(uuid4()) + "{a}"
+    stream1 = str(uuid4()) + "{a}"
+    stream2 = str(uuid4()) + "{a}"
 
     result = await async_client.xread({stream: 0})
     assert result == {}
@@ -45,15 +103,15 @@ async def test_xread(async_client: redis_rs.AsyncClient):
     assert result == {}
     assert isinstance(result, dict)
 
-    result = await async_client.xread(str(uuid4()), stream, str(uuid4()), encoding="utf-8")
+    result = await async_client.xread(stream1, stream, stream2, encoding="utf-8")
     assert result == {stream: {ident: {"a": "bcd"}}}
     assert isinstance(result, dict)
 
-    result = await async_client.xread(str(uuid4()), stream, str(uuid4()), id="0", encoding="utf-8")
+    result = await async_client.xread(stream1, stream, stream2, id="0", encoding="utf-8")
     assert result == {stream: {ident: {"a": "bcd"}}}
     assert isinstance(result, dict)
 
-    result = await async_client.xread(str(uuid4()), stream, str(uuid4()), id="$", encoding="utf-8")
+    result = await async_client.xread(stream1, stream, stream2, id="$", encoding="utf-8")
     assert result == {}
     assert isinstance(result, dict)
 
