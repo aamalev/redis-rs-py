@@ -30,7 +30,7 @@ jobs:
     name: pytest on redis
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         redis-version:
           - '6'
