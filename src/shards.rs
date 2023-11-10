@@ -219,7 +219,6 @@ impl FromRedisValue for Slots {
                                         .collect();
 
                                     if addrs.is_empty() {
-                                        print!("addrs is empty");
                                         None
                                     } else {
                                         let id = addrs.pop().unwrap();

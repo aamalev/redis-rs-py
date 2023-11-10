@@ -136,7 +136,6 @@ impl AsyncShards {
         let node = if let Some(node) = nodes.get(addr) {
             node
         } else {
-            println!("NodeAdd {}", addr);
             let ninfo = ("redis://".to_string() + shard.master.as_str()).into_connection_info()?;
             let node = self.create_node(ninfo).await?;
             nodes.insert(addr.to_string(), node);
