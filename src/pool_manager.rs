@@ -98,7 +98,7 @@ impl PoolManager {
                 if let Some(username) = s.redis.username.clone() {
                     result.insert("username", redis::Value::Data(username.as_bytes().to_vec()));
                 }
-                if let Some(_) = s.redis.password.clone() {
+                if s.redis.password.is_some() {
                     result.insert("auth", redis::Value::Int(1));
                 }
                 redis::Value::Data(s.addr.to_string().as_bytes().to_vec())
