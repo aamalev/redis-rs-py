@@ -6,6 +6,7 @@ import pytest
 import redis_rs
 
 
+@pytest.mark.redis(version=6.2)
 async def test_xadd(async_client: redis_rs.AsyncClient):
     stream = str(uuid4())
 
@@ -25,6 +26,7 @@ async def test_xadd(async_client: redis_rs.AsyncClient):
     assert isinstance(ident, str)
 
 
+@pytest.mark.redis(version=6.2)
 async def test_xadd_nomkstream(async_client: redis_rs.AsyncClient):
     stream = str(uuid4())
 
@@ -32,6 +34,7 @@ async def test_xadd_nomkstream(async_client: redis_rs.AsyncClient):
     assert ident is None
 
 
+@pytest.mark.redis(version=6.2)
 async def test_xadd_flat(async_client: redis_rs.AsyncClient):
     stream = str(uuid4())
 
@@ -48,6 +51,7 @@ async def test_xadd_flat_id_star(id, async_client: redis_rs.AsyncClient):
     assert isinstance(ident, str), ident
 
 
+@pytest.mark.redis(version=6.2)
 @pytest.mark.parametrize(
     "id",
     [

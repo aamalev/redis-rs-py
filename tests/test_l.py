@@ -1,5 +1,7 @@
 from uuid import uuid4
 
+import pytest
+
 import redis_rs
 
 
@@ -51,6 +53,7 @@ async def test_lrange(async_client: redis_rs.AsyncClient):
     assert result == [1, 2, 3]
 
 
+@pytest.mark.redis(version=6.2)
 async def test_lpop(async_client: redis_rs.AsyncClient):
     key = str(uuid4())
 
@@ -73,6 +76,7 @@ async def test_lpop(async_client: redis_rs.AsyncClient):
     assert result == 1
 
 
+@pytest.mark.redis(version=6)
 async def test_blpop(async_client: redis_rs.AsyncClient):
     key1 = str(uuid4()) + "{a}"
     key2 = str(uuid4()) + "{a}"
