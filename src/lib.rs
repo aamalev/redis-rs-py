@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use redis::IntoConnectionInfo;
 mod client;
 mod client_result;
 mod client_result_async;
@@ -17,27 +18,49 @@ mod single_node;
 mod types;
 
 #[pyfunction]
-#[pyo3(signature = (*initial_nodes, max_size=None, cluster=None, client_id=None, features=None))]
+#[pyo3(signature = (
+    *initial_nodes,
+    max_size=None,
+    cluster=None,
+    username = None,
+    password = None,
+    db = None,
+    client_id=None,
+    features=None,
+))]
+#[allow(clippy::too_many_arguments)]
 fn create_client(
     initial_nodes: Vec<String>,
     max_size: Option<u32>,
     cluster: Option<bool>,
+    username: Option<String>,
+    password: Option<String>,
+    db: Option<i64>,
     client_id: Option<String>,
     features: Option<Vec<String>>,
 ) -> PyResult<client::Client> {
-    let is_cluster = match cluster {
-        None => initial_nodes.len() > 1,
-        Some(c) => c,
-    };
-    let mut cm = if is_cluster {
-        pool_manager::PoolManager::new_cluster(initial_nodes)
-    } else {
-        let addr = initial_nodes
-            .get(0)
-            .map(String::as_str)
-            .unwrap_or("redis://localhost:6379");
-        pool_manager::PoolManager::new(addr)
-    };
+    let mut nodes = initial_nodes.clone();
+    if nodes.is_empty() {
+        nodes.push("redis://localhost:6379".to_string());
+    }
+    let mut infos = vec![];
+    for i in nodes.into_iter() {
+        let mut info = i.into_connection_info().map_err(error::RedisError::from)?;
+        if password.is_some() {
+            info.redis.password = password.clone();
+        }
+        if username.is_some() {
+            info.redis.username = username.clone();
+        }
+        if let Some(db) = db {
+            info.redis.db = db;
+        }
+        infos.push(info);
+    }
+
+    let mut cm = pool_manager::PoolManager::new(infos)?;
+    cm.is_cluster = cluster;
+
     if let Some(features) = features {
         cm.features = features
             .into_iter()

@@ -18,6 +18,9 @@ def create_client(
     *args: str,
     max_size: Optional[int] = None,
     cluster: Optional[bool] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    db: Optional[int] = None,
     client_id: Optional[str] = None,
     features: Optional[List[str]] = None,
 ) -> Client:
@@ -27,6 +30,9 @@ def create_client(
         *args,
         max_size=max_size,
         cluster=cluster,
+        username=username,
+        password=password,
+        db=db,
         client_id=client_id,
         features=features,
     )

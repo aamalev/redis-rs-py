@@ -24,11 +24,14 @@ pub struct AsyncShards {
 }
 
 impl AsyncShards {
-    pub async fn new(
-        nodes: Vec<String>,
+    pub async fn new<T>(
+        nodes: Vec<T>,
         max_size: u32,
         is_cluster: Option<bool>,
-    ) -> RedisResult<AsyncShards> {
+    ) -> RedisResult<AsyncShards>
+    where
+        T: IntoConnectionInfo,
+    {
         let mut result = Self {
             max_size,
             ..Default::default()

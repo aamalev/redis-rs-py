@@ -30,6 +30,7 @@ impl Client {
         let mut status = self.cr.status()?;
         let is_closed = status.remove("closed");
         let is_cluster = status.remove("cluster");
+        let is_auth = status.remove("auth");
         let result = PyDict::new(py);
         for (k, v) in status.into_iter() {
             let value = types::to_object(py, v, "utf-8");
@@ -42,6 +43,10 @@ impl Client {
         if let Some(redis::Value::Int(c)) = is_closed {
             let is_closed = c == 1;
             result.set_item("closed", is_closed.to_object(py))?;
+        }
+        if let Some(redis::Value::Int(c)) = is_auth {
+            let is_auth = c == 1;
+            result.set_item("auth", is_auth.to_object(py))?;
         }
         Ok(result.to_object(py))
     }

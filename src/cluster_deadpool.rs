@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use deadpool_redis_cluster::{Config, PoolError, Runtime};
-use redis::{aio::ConnectionLike, Cmd};
+use redis::{aio::ConnectionLike, Cmd, IntoConnectionInfo};
 use std::collections::HashMap;
 
 pub struct DeadPoolCluster {
@@ -21,13 +21,21 @@ impl From<PoolError> for error::RedisError {
 }
 
 impl DeadPoolCluster {
-    pub fn new(initial_nodes: Vec<String>, max_size: u32) -> Self {
-        let cfg = Config::from_urls(initial_nodes);
+    pub fn new<T>(initial_nodes: Vec<T>, max_size: u32) -> Result<Self, error::RedisError>
+    where
+        T: IntoConnectionInfo,
+    {
+        let mut urls = vec![];
+        for i in initial_nodes.into_iter() {
+            let url = i.into_connection_info()?;
+            urls.push(url.addr.to_string());
+        }
+        let cfg = Config::from_urls(urls);
         let pool = cfg
             .create_pool(Some(Runtime::Tokio1))
             .expect("Error with redis pool");
         pool.resize(max_size as usize);
-        Self { pool }
+        Ok(Self { pool })
     }
 }
 
