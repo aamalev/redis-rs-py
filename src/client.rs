@@ -146,10 +146,50 @@ impl Client {
         self.cr.fetch_int(py, cmd)
     }
 
-    #[pyo3(signature = (key))]
-    fn exists<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny> {
-        let cmd = redis::cmd("EXISTS").arg(key).to_owned();
-        self.cr.execute(py, cmd, String::default())
+    #[pyo3(signature = (*keys))]
+    fn exists<'a>(&self, py: Python<'a>, keys: Vec<types::Str>) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("EXISTS").arg(keys).to_owned();
+        self.cr.fetch_int(py, cmd)
+    }
+
+    #[pyo3(signature = (key, seconds, option = None))]
+    fn expire<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        seconds: u64,
+        option: Option<types::Str>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("EXPIRE")
+            .arg(key)
+            .arg(seconds)
+            .arg(option)
+            .to_owned();
+        self.cr.fetch_bool(py, cmd)
+    }
+
+    #[pyo3(signature = (*keys))]
+    fn delete<'a>(&self, py: Python<'a>, keys: Vec<types::Str>) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("DEL").arg(keys).to_owned();
+        self.cr.fetch_int(py, cmd)
+    }
+
+    #[pyo3(signature = (script, numkeys, *args, **kwargs))]
+    fn eval<'a>(
+        &self,
+        py: Python<'a>,
+        script: types::Str,
+        numkeys: u8,
+        args: Vec<types::Arg>,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("EVAL")
+            .arg(script)
+            .arg(numkeys)
+            .arg(args)
+            .to_owned();
+        let encoding = self.get_encoding(kwargs);
+        self.cr.execute(py, cmd, encoding)
     }
 
     #[pyo3(signature = (key, value))]
@@ -323,6 +363,34 @@ impl Client {
         self.cr.fetch_int(py, cmd)
     }
 
+    #[pyo3(signature = (key, *elements))]
+    fn pfadd<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        elements: Vec<types::Arg>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("PFADD").arg(key).arg(elements).to_owned();
+        self.cr.fetch_bool(py, cmd)
+    }
+
+    #[pyo3(signature = (*keys))]
+    fn pfcount<'a>(&self, py: Python<'a>, keys: Vec<types::Arg>) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("PFCOUNT").arg(keys).to_owned();
+        self.cr.fetch_int(py, cmd)
+    }
+
+    #[pyo3(signature = (destkey, *sourcekeys))]
+    fn pfmerge<'a>(
+        &self,
+        py: Python<'a>,
+        destkey: types::Str,
+        sourcekeys: Vec<types::Arg>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("PFADD").arg(destkey).arg(sourcekeys).to_owned();
+        self.cr.fetch_bool(py, cmd)
+    }
+
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (
         stream, *args,
@@ -457,6 +525,74 @@ impl Client {
         id: Vec<types::Str>,
     ) -> PyResult<&'a PyAny> {
         let cmd = redis::cmd("XACK").arg(key).arg(group).arg(id).to_owned();
+        self.cr.fetch_int(py, cmd)
+    }
+
+    #[pyo3(signature = (key, *args, score = None, incr = None, encoding = None))]
+    fn zadd<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        args: Vec<types::Arg>,
+        score: Option<f64>,
+        incr: Option<f64>,
+        encoding: Option<String>,
+    ) -> PyResult<&'a PyAny> {
+        let encoding = encoding.unwrap_or_default();
+        let mut cmd = redis::cmd("ZADD").arg(key).to_owned();
+        if let Some(incr) = incr {
+            cmd.arg(b"INCR").arg(incr);
+        } else {
+            cmd.arg(score);
+        }
+        cmd.arg(args);
+        self.cr.execute(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (
+        key,
+        start = types::Arg::Int(0),
+        stop = types::Arg::Int(-1),
+        *args,
+        withscores = false,
+    ))]
+    fn zrange<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        start: types::Arg,
+        stop: types::Arg,
+        args: Vec<types::Arg>,
+        withscores: bool,
+    ) -> PyResult<&'a PyAny> {
+        let mut cmd = redis::cmd("ZRANGE")
+            .arg(key)
+            .arg(start)
+            .arg(stop)
+            .arg(args)
+            .to_owned();
+        if withscores {
+            cmd.arg(b"WITHSCORES");
+            self.cr.fetch_dict(py, cmd, "float".to_string())
+        } else {
+            self.cr.fetch_list(py, cmd)
+        }
+    }
+
+    #[pyo3(signature = (key))]
+    fn zcard<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("ZCARD").arg(key).to_owned();
+        self.cr.fetch_int(py, cmd)
+    }
+
+    #[pyo3(signature = (key, *members))]
+    fn zrem<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        members: Vec<types::Arg>,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("ZREM").arg(key).arg(members).to_owned();
         self.cr.fetch_int(py, cmd)
     }
 }
