@@ -5,16 +5,59 @@ use crate::{
     pool::{Connection, Pool},
 };
 use async_trait::async_trait;
-use bb8_redis_cluster::RedisConnectionManager;
-use redis::{aio::ConnectionLike, Cmd};
+use redis::{
+    aio::ConnectionLike, cluster::ClusterClient, cluster_async::ClusterConnection, Cmd, ErrorKind,
+    IntoConnectionInfo, RedisError,
+};
+
+pub struct ClusterManager {
+    pub(crate) client: ClusterClient,
+}
+
+impl ClusterManager {
+    pub fn new<T>(initial_nodes: Vec<T>) -> Result<Self, RedisError>
+    where
+        T: IntoConnectionInfo,
+    {
+        let client = ClusterClient::new(initial_nodes)?;
+        Ok(Self { client })
+    }
+}
+
+#[async_trait]
+impl bb8::ManageConnection for ClusterManager {
+    type Connection = ClusterConnection;
+    type Error = RedisError;
+
+    async fn connect(&self) -> Result<Self::Connection, Self::Error> {
+        self.client.get_async_connection().await
+    }
+
+    async fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
+        let pong: String = redis::cmd("PING").query_async(conn).await?;
+        match pong.as_str() {
+            "PONG" => Ok(()),
+            _ => Err((ErrorKind::ResponseError, "ping request").into()),
+        }
+    }
+
+    fn has_broken(&self, _: &mut Self::Connection) -> bool {
+        false
+    }
+}
+
+type Manager = ClusterManager;
 
 pub struct BB8Cluster {
-    pool: bb8::Pool<RedisConnectionManager>,
+    pool: bb8::Pool<Manager>,
 }
 
 impl BB8Cluster {
-    pub async fn new(initial_nodes: Vec<String>, max_size: u32) -> Self {
-        let manager = RedisConnectionManager::new(initial_nodes).unwrap();
+    pub async fn new<T>(initial_nodes: Vec<T>, max_size: u32) -> Self
+    where
+        T: IntoConnectionInfo,
+    {
+        let manager = Manager::new(initial_nodes).unwrap();
         let pool = bb8::Pool::builder()
             .max_size(max_size)
             .build(manager)

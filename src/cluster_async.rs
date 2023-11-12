@@ -5,7 +5,7 @@ use crate::{
     pool::{Connection, Pool},
 };
 use async_trait::async_trait;
-use redis::{aio::ConnectionLike, cluster::ClusterClient, Cmd};
+use redis::{aio::ConnectionLike, cluster::ClusterClient, Cmd, IntoConnectionInfo};
 use tokio::sync::Semaphore;
 
 pub struct Cluster {
@@ -14,8 +14,11 @@ pub struct Cluster {
 }
 
 impl Cluster {
-    pub async fn new(initial_nodes: Vec<String>, max_size: u32) -> Result<Self, error::RedisError> {
-        let client = ClusterClient::new(initial_nodes).unwrap();
+    pub async fn new<T>(initial_nodes: Vec<T>, max_size: u32) -> Result<Self, error::RedisError>
+    where
+        T: IntoConnectionInfo,
+    {
+        let client = ClusterClient::new(initial_nodes)?;
         let semaphore = Semaphore::new(max_size as usize);
         let connection = client.get_async_connection().await?;
         Ok(Self {

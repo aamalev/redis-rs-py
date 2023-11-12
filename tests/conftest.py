@@ -35,11 +35,17 @@ VERSION = ""
 
 
 @pytest.fixture
-async def async_client():
-    async with redis_rs.create_client(
+def client_factory():
+    return lambda **kwargs: redis_rs.create_client(
         *NODES,
         cluster=IS_CLUSTER,
-    ) as c:
+        **kwargs,
+    )
+
+
+@pytest.fixture
+async def async_client(client_factory):
+    async with client_factory() as c:
         yield c
 
 
