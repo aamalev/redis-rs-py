@@ -54,7 +54,7 @@ impl Client {
     fn get_encoding(&self, kwargs: Option<&PyDict>) -> String {
         let mut encoding = String::default();
         if let Some(kw) = kwargs {
-            if let Some(val) = kw.get_item("encoding") {
+            if let Ok(Some(val)) = kw.get_item("encoding") {
                 if let Ok(val) = val.extract() {
                     encoding = val;
                 }
