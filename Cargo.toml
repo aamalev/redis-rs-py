@@ -20,7 +20,7 @@ bb8-redis-cluster = "0.1.1"
 deadpool-redis-cluster = "0.1.0"
 deadpool-redis = "0.13.0"
 crc16 = "0.4.0"
-openssl = { version = "0.10.57", optional = false }
+openssl = { version = "0.10.57", optional = true }
 
 [features]
 rustls = ["redis/tokio-rustls-comp", "redis/tls-rustls-insecure"]
