@@ -74,7 +74,7 @@ fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> PyResult<PyObject> {
             }
             Ok(result.to_object(py))
         }
-        Codec::Bytes => Ok(Python::with_gil(|py| PyBytes::new(py, &v).to_object(py))),
+        Codec::Bytes => Ok(PyBytes::new(py, &v).to_object(py)),
     }
 }
 
