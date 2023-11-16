@@ -33,7 +33,7 @@ impl Client {
         let is_auth = status.remove("auth");
         let result = PyDict::new(py);
         for (k, v) in status.into_iter() {
-            let value = types::to_object(py, v, "utf-8");
+            let value = types::to_object(py, v, types::Codec::String);
             result.set_item(k, value)?;
         }
         if let Some(redis::Value::Int(c)) = is_cluster {
@@ -51,18 +51,6 @@ impl Client {
         Ok(result.to_object(py))
     }
 
-    fn get_encoding(&self, kwargs: Option<&PyDict>) -> String {
-        let mut encoding = String::default();
-        if let Some(kw) = kwargs {
-            if let Ok(Some(val)) = kw.get_item("encoding") {
-                if let Ok(val) = val.extract() {
-                    encoding = val;
-                }
-            }
-        }
-        encoding
-    }
-
     #[pyo3(signature = (cmd, *args, **kwargs))]
     fn execute<'a>(
         &self,
@@ -73,7 +61,7 @@ impl Client {
     ) -> PyResult<&'a PyAny> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         self.cr.execute(py, cmd, encoding)
     }
 
@@ -123,7 +111,7 @@ impl Client {
     ) -> PyResult<&'a PyAny> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         self.cr.fetch_dict(py, cmd, encoding)
     }
 
@@ -193,14 +181,14 @@ impl Client {
             .arg(numkeys)
             .arg(args)
             .to_owned();
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         self.cr.execute(py, cmd, encoding)
     }
 
     #[pyo3(signature = (key, value))]
     fn set<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
         let cmd = redis::cmd("SET").arg(key).arg(value).to_owned();
-        self.cr.execute(py, cmd, String::default())
+        self.cr.execute(py, cmd, types::Codec::default())
     }
 
     #[pyo3(signature = (key, **kwargs))]
@@ -210,7 +198,7 @@ impl Client {
         key: types::Str,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("GET").arg(key).to_owned();
         self.cr.execute(py, cmd, encoding)
     }
@@ -239,7 +227,7 @@ impl Client {
         field: types::Str,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("HGET").arg(key).arg(field).to_owned();
         self.cr.execute(py, cmd, encoding)
     }
@@ -252,7 +240,7 @@ impl Client {
         fields: Vec<types::Str>,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("HMGET").arg(key).arg(fields).to_owned();
         self.cr.execute(py, cmd, encoding)
     }
@@ -264,7 +252,7 @@ impl Client {
         key: types::Str,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("HGETALL").arg(key).to_owned();
         self.cr.fetch_dict(py, cmd, encoding)
     }
@@ -326,7 +314,7 @@ impl Client {
         count: Option<NonZeroUsize>,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("LPOP").arg(key).arg(count).to_owned();
         self.cr.execute(py, cmd, encoding)
     }
@@ -339,7 +327,7 @@ impl Client {
         timeout: f64,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("BLPOP").arg(keys).arg(timeout).to_owned();
         self.cr.execute(py, cmd, encoding)
     }
@@ -353,7 +341,7 @@ impl Client {
         stop: isize,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = self.get_encoding(kwargs);
+        let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("LRANGE")
             .arg(key)
             .arg(start)
@@ -480,7 +468,7 @@ impl Client {
         group: Option<types::Str>,
         encoding: Option<String>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = encoding.unwrap_or_default();
+        let encoding = types::Codec::from(encoding);
         let mut id = id.unwrap_or(types::Arg::Int(0));
         let mut options = StreamReadOptions::default();
         if let Some(ms) = block {
@@ -543,7 +531,7 @@ impl Client {
         incr: Option<f64>,
         encoding: Option<String>,
     ) -> PyResult<&'a PyAny> {
-        let encoding = encoding.unwrap_or_default();
+        let encoding = types::Codec::from(encoding);
         let mut cmd = redis::cmd("ZADD").arg(key).to_owned();
         if let Some(incr) = incr {
             cmd.arg(b"INCR").arg(incr);
@@ -578,7 +566,7 @@ impl Client {
             .to_owned();
         if withscores {
             cmd.arg(b"WITHSCORES");
-            self.cr.fetch_dict(py, cmd, "float".to_string())
+            self.cr.fetch_dict(py, cmd, types::Codec::Float)
         } else {
             self.cr.fetch_list(py, cmd)
         }

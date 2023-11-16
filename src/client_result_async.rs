@@ -48,14 +48,12 @@ impl ClientResult for AsyncClientResult {
         Ok(result)
     }
 
-    fn execute<'a>(&self, py: Python<'a>, cmd: Cmd, encoding: String) -> PyResult<&'a PyAny> {
+    fn execute<'a>(&self, py: Python<'a>, cmd: Cmd, encoding: types::Codec) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
         future_into_py(py, async move {
             let cm = cm.read().await;
             let value = cm.pool.execute(cmd).await?;
-            Ok(Python::with_gil(|py| {
-                types::to_object(py, value, &encoding)
-            }))
+            Ok(Python::with_gil(|py| types::to_object(py, value, encoding)))
         })
     }
 
@@ -88,12 +86,17 @@ impl ClientResult for AsyncClientResult {
         })
     }
 
-    fn fetch_dict<'a>(&self, py: Python<'a>, cmd: Cmd, encoding: String) -> PyResult<&'a PyAny> {
+    fn fetch_dict<'a>(
+        &self,
+        py: Python<'a>,
+        cmd: Cmd,
+        encoding: types::Codec,
+    ) -> PyResult<&'a PyAny> {
         let cm = self.cm.clone();
         future_into_py(py, async move {
             let cm = cm.read().await;
             let value = cm.pool.execute(cmd).await?;
-            Ok(Python::with_gil(|py| types::to_dict(py, value, &encoding)))
+            Ok(Python::with_gil(|py| types::to_dict(py, value, encoding)))
         })
     }
 

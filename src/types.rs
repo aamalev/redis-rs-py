@@ -2,22 +2,61 @@ use std::collections::HashMap;
 
 use pyo3::{
     types::{PyBytes, PyDict, PyList},
-    FromPyObject, PyObject, Python, ToPyObject,
+    FromPyObject, PyObject, PyResult, Python, ToPyObject,
 };
 use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
 
 use crate::error;
 
-fn _decode(
-    py: Python,
-    v: Vec<u8>,
-    encoding: &str,
-) -> Result<PyObject, Box<dyn std::error::Error + 'static>> {
-    match encoding {
-        "utf-8" | "utf8" | "UTF8" | "UTF-8" => Ok(String::from_utf8(v)?.to_object(py)),
-        "float" => Ok(String::from_utf8(v)?.parse::<f64>()?.to_object(py)),
-        "int" => Ok(String::from_utf8(v)?.parse::<i64>()?.to_object(py)),
-        "info" => {
+#[derive(Clone, Default)]
+pub enum Codec {
+    #[default]
+    Bytes,
+    String,
+    Int,
+    Float,
+    Info,
+}
+
+impl From<&str> for Codec {
+    fn from(value: &str) -> Self {
+        match value {
+            "utf-8" | "utf8" | "UTF8" | "UTF-8" | "str" => Codec::String,
+            "float" => Codec::Float,
+            "int" => Codec::Int,
+            "info" => Codec::Info,
+            _ => Codec::Bytes,
+        }
+    }
+}
+
+impl From<Option<String>> for Codec {
+    fn from(value: Option<String>) -> Self {
+        value.map(|v| Codec::from(v.as_str())).unwrap_or_default()
+    }
+}
+
+impl From<Option<&PyDict>> for Codec {
+    fn from(kwargs: Option<&PyDict>) -> Self {
+        kwargs
+            .map(|kw| {
+                kw.get_item("encoding")
+                    .map(|val| {
+                        val.map(|v| v.extract::<&str>().map(Codec::from).unwrap_or_default())
+                            .unwrap_or_default()
+                    })
+                    .unwrap_or_default()
+            })
+            .unwrap_or_default()
+    }
+}
+
+fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> PyResult<PyObject> {
+    match codec {
+        Codec::String => Ok(String::from_utf8(v)?.to_object(py)),
+        Codec::Float => Ok(String::from_utf8(v)?.parse::<f64>()?.to_object(py)),
+        Codec::Int => Ok(String::from_utf8(v)?.parse::<i64>()?.to_object(py)),
+        Codec::Info => {
             let result = PyDict::new(py);
             for (key, value) in String::from_utf8(v)?
                 .split("\r\n")
@@ -35,35 +74,35 @@ fn _decode(
             }
             Ok(result.to_object(py))
         }
-        _ => Ok(PyBytes::new(py, &v).to_object(py)),
+        Codec::Bytes => Ok(PyBytes::new(py, &v).to_object(py)),
     }
 }
 
-pub fn decode(py: Python, v: Vec<u8>, encoding: &str) -> PyObject {
-    if let Ok(result) = _decode(py, v, encoding) {
+pub fn decode(py: Python, v: Vec<u8>, codec: Codec) -> PyObject {
+    if let Ok(result) = _decode(py, v, codec) {
         result
     } else {
         py.None()
     }
 }
 
-fn _to_dict(py: Python<'_>, value: Value, encoding: &str) -> PyObject {
+fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyObject {
     match value {
-        Value::Data(v) => decode(py, v, encoding),
+        Value::Data(v) => decode(py, v, codec),
         Value::Nil => py.None(),
         Value::Int(i) => i.to_object(py),
-        Value::Bulk(_) => to_dict(py, value, encoding),
+        Value::Bulk(_) => to_dict(py, value, codec),
         Value::Status(s) => s.to_object(py),
         Value::Okay => true.to_object(py),
     }
 }
 
-pub fn to_dict(py: Python, value: Value, encoding: &str) -> PyObject {
+pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyObject {
     let result = PyDict::new(py);
     let map: HashMap<String, Value> = FromRedisValue::from_redis_value(&value).unwrap_or_default();
     if !map.is_empty() {
         for (k, value) in map.into_iter() {
-            let val = _to_dict(py, value, encoding);
+            let val = _to_dict(py, value, codec.clone());
             result.set_item(k, val).unwrap();
         }
     } else if let Value::Bulk(v) = value {
@@ -72,11 +111,11 @@ pub fn to_dict(py: Python, value: Value, encoding: &str) -> PyObject {
                 FromRedisValue::from_redis_value(&value).unwrap_or_default();
             if map.len() == 1 {
                 for (k, value) in map.into_iter() {
-                    let val = _to_dict(py, value, encoding);
+                    let val = _to_dict(py, value, codec.clone());
                     result.set_item(k, val).unwrap();
                 }
             } else {
-                let value = _to_dict(py, value, encoding);
+                let value = _to_dict(py, value, codec.clone());
                 result.set_item(n, value).unwrap();
             }
         }
@@ -84,14 +123,16 @@ pub fn to_dict(py: Python, value: Value, encoding: &str) -> PyObject {
     result.to_object(py)
 }
 
-pub fn to_object(py: Python, value: Value, encoding: &str) -> PyObject {
+pub fn to_object(py: Python, value: Value, codec: Codec) -> PyObject {
     match value {
-        Value::Data(v) => decode(py, v, encoding),
+        Value::Data(v) => decode(py, v, codec),
         Value::Nil => py.None(),
         Value::Int(i) => i.to_object(py),
-        Value::Bulk(bulk) => {
-            PyList::new(py, bulk.into_iter().map(|v| to_object(py, v, encoding))).to_object(py)
-        }
+        Value::Bulk(bulk) => PyList::new(
+            py,
+            bulk.into_iter().map(|v| to_object(py, v, codec.clone())),
+        )
+        .to_object(py),
         Value::Status(s) => s.to_object(py),
         Value::Okay => true.to_object(py),
     }
