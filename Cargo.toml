@@ -21,6 +21,8 @@ deadpool-redis-cluster = "0.1.0"
 deadpool-redis = "0.13.0"
 crc16 = "0.4.0"
 openssl = { version = "0.10.57", optional = true }
+serde = "1.0.192"
+serde_json = "1.0.108"
 
 [features]
 rustls = ["redis/tokio-rustls-comp", "redis/tls-rustls-insecure"]

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use pyo3::{
     types::{PyBytes, PyDict, PyList},
-    FromPyObject, PyObject, PyResult, Python, ToPyObject,
+    FromPyObject, PyObject, Python, ToPyObject,
 };
 use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
 
@@ -16,6 +16,7 @@ pub enum Codec {
     Int,
     Float,
     Info,
+    Json,
 }
 
 impl From<&str> for Codec {
@@ -25,6 +26,7 @@ impl From<&str> for Codec {
             "float" => Codec::Float,
             "int" => Codec::Int,
             "info" => Codec::Info,
+            "json" => Codec::Json,
             _ => Codec::Bytes,
         }
     }
@@ -51,7 +53,7 @@ impl From<Option<&PyDict>> for Codec {
     }
 }
 
-fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> PyResult<PyObject> {
+fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::ValueError> {
     match codec {
         Codec::String => Ok(String::from_utf8(v)?.to_object(py)),
         Codec::Float => Ok(String::from_utf8(v)?.parse::<f64>()?.to_object(py)),
@@ -75,7 +77,43 @@ fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> PyResult<PyObject> {
             Ok(result.to_object(py))
         }
         Codec::Bytes => Ok(PyBytes::new(py, &v).to_object(py)),
+        Codec::Json => {
+            let v: serde_json::Value =
+                serde_json::from_slice(&v).map_err(error::ValueError::from)?;
+            from_json(py, v)
+        }
     }
+}
+
+fn from_json(py: Python<'_>, v: serde_json::Value) -> Result<PyObject, error::ValueError> {
+    Ok(match v {
+        serde_json::Value::Null => py.None(),
+        serde_json::Value::Bool(b) => b.to_object(py),
+        serde_json::Value::Number(n) => {
+            if n.is_f64() {
+                n.as_f64().to_object(py)
+            } else if n.is_i64() {
+                n.as_i64().to_object(py)
+            } else {
+                n.as_u64().to_object(py)
+            }
+        }
+        serde_json::Value::String(s) => s.to_object(py),
+        serde_json::Value::Array(a) => {
+            let mut result = vec![];
+            for v in a.into_iter() {
+                result.push(from_json(py, v)?);
+            }
+            PyList::new(py, result).to_object(py)
+        }
+        serde_json::Value::Object(m) => {
+            let result = PyDict::new(py);
+            for (k, v) in m.into_iter() {
+                result.set_item(k, from_json(py, v)?).unwrap();
+            }
+            result.to_object(py)
+        }
+    })
 }
 
 pub fn decode(py: Python, v: Vec<u8>, codec: Codec) -> PyObject {
