@@ -97,3 +97,19 @@ impl From<std::num::ParseFloatError> for ValueError {
         }
     }
 }
+
+impl From<serde_json::Error> for ValueError {
+    fn from(value: serde_json::Error) -> Self {
+        Self {
+            _err: value.to_string(),
+        }
+    }
+}
+
+impl From<pyo3::PyErr> for ValueError {
+    fn from(value: pyo3::PyErr) -> Self {
+        Self {
+            _err: value.to_string(),
+        }
+    }
+}

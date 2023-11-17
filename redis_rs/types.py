@@ -6,6 +6,7 @@ Encoding = Union[
     Literal["int"],
     Literal["float"],
     Literal["info"],
+    Literal["json"],
 ]
 Arg = Union[str, bytes, int, float]
 Result = Union[bytes, str, int, float, dict, list]
