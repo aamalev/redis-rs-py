@@ -97,6 +97,9 @@ Using
           info = await x.execute("INFO", "SERVER", encoding="info")
           print(info["redis_version"])
 
+          # parse value as json
+          print(await x.get("foo", encoding="json"))
+
           print(await x.execute(b"HSET", "fooh", "a", b"asdfg"))
           print(await x.fetch_int("HSET", "fooh", "b", 11234567890))
           print(await x.fetch_int("HGET", "fooh", "b"))
