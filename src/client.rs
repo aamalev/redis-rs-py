@@ -380,7 +380,10 @@ impl Client {
         destkey: types::Str,
         sourcekeys: Vec<types::Arg>,
     ) -> PyResult<&'a PyAny> {
-        let cmd = redis::cmd("PFMERGE").arg(destkey).arg(sourcekeys).to_owned();
+        let cmd = redis::cmd("PFMERGE")
+            .arg(destkey)
+            .arg(sourcekeys)
+            .to_owned();
         self.cr.fetch_bool(py, cmd)
     }
 
