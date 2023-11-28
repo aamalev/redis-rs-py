@@ -105,3 +105,16 @@ async def test_llen(async_client: redis_rs.AsyncClient):
 
     result = await async_client.llen(key)
     assert result == 2
+
+
+async def test_lrem(async_client: redis_rs.AsyncClient):
+    key = str(uuid4())
+
+    n = await async_client.lpush(key, 2)
+    assert n == 1
+
+    n = await async_client.lpush(key, 3)
+    assert n == 2
+
+    result = await async_client.lrem(key, 0, 2)
+    assert result == 1

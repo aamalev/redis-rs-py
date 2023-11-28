@@ -336,12 +336,28 @@ impl Client {
         &self,
         py: Python<'a>,
         keys: Vec<types::Str>,
-        timeout: f64,
+        timeout: types::Arg,
         kwargs: Option<&PyDict>,
     ) -> PyResult<&'a PyAny> {
         let encoding = types::Codec::from(kwargs);
         let cmd = redis::cmd("BLPOP").arg(keys).arg(timeout).to_owned();
         self.cr.execute(py, cmd, encoding)
+    }
+
+    #[pyo3(signature = (key, count, element))]
+    fn lrem<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        count: isize,
+        element: types::Arg,
+    ) -> PyResult<&'a PyAny> {
+        let cmd = redis::cmd("LREM")
+            .arg(key)
+            .arg(count)
+            .arg(element)
+            .to_owned();
+        self.cr.fetch_int(py, cmd)
     }
 
     #[pyo3(signature = (key, start = 0, stop = -1, **kwargs))]
