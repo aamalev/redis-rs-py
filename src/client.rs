@@ -167,6 +167,18 @@ impl Client {
         self.cr.fetch_int(py, cmd)
     }
 
+    #[pyo3(signature = (pattern, encoding = None))]
+    fn keys<'a>(
+        &self,
+        py: Python<'a>,
+        pattern: types::Arg,
+        encoding: Option<String>,
+    ) -> PyResult<&'a PyAny> {
+        let encoding = types::Codec::from(encoding);
+        let cmd = redis::cmd("KEYS").arg(pattern).to_owned();
+        self.cr.execute(py, cmd, encoding)
+    }
+
     #[pyo3(signature = (script, numkeys, *args, **kwargs))]
     fn eval<'a>(
         &self,
