@@ -7,7 +7,7 @@ async def test_client_id(async_client: redis_rs.AsyncClient):
     assert async_client.client_id
 
 
-@pytest.mark.redis(single=True)
+@pytest.mark.redis(single=True, version=6)
 async def test_password(async_client: redis_rs.AsyncClient, client_factory):
     user = "test"
     password = await async_client.fetch_str("ACL", "GENPASS")
