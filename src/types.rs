@@ -279,6 +279,30 @@ impl ToRedisArgs for Arg {
 pub enum ScalarOrMap {
     Scalar(Arg),
     Map(HashMap<String, Arg>),
+    BMap(HashMap<Vec<u8>, Arg>),
+}
+
+impl ScalarOrMap {
+    pub fn write_val_key(&self, mut cmd: redis::Cmd) -> redis::Cmd {
+        match self {
+            Self::Map(m) => {
+                for (k, v) in m.iter() {
+                    cmd.arg(v);
+                    cmd.arg(k);
+                }
+            }
+            Self::BMap(m) => {
+                for (k, v) in m.iter() {
+                    cmd.arg(v);
+                    cmd.arg(k);
+                }
+            }
+            Self::Scalar(arg) => {
+                cmd.arg(arg);
+            }
+        };
+        cmd
+    }
 }
 
 impl ToRedisArgs for ScalarOrMap {
@@ -287,6 +311,7 @@ impl ToRedisArgs for ScalarOrMap {
         W: ?Sized + RedisWrite,
     {
         match self {
+            ScalarOrMap::BMap(m) => m.write_redis_args(out),
             ScalarOrMap::Map(m) => m.write_redis_args(out),
             ScalarOrMap::Scalar(a) => a.write_redis_args(out),
         }

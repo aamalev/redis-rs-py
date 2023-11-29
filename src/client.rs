@@ -469,6 +469,10 @@ impl Client {
                     cmd.arg(b"*");
                     cmd.arg(m);
                 }
+                types::ScalarOrMap::BMap(m) => {
+                    cmd.arg(b"*");
+                    cmd.arg(m);
+                }
                 types::ScalarOrMap::Scalar(arg) => {
                     if let Ok(id) = arg.to_normalized_stream_msg_id() {
                         cmd.arg(id);
@@ -535,6 +539,12 @@ impl Client {
                     ids.push(v);
                 }
             }
+            types::ScalarOrMap::BMap(m) => {
+                for (k, v) in m.into_iter() {
+                    keys.push(String::from_utf8(k)?);
+                    ids.push(v);
+                }
+            }
         }
         cmd.arg(options).arg("STREAMS").arg(keys).arg(ids);
         self.cr.fetch_dict(py, cmd, encoding)
@@ -552,12 +562,12 @@ impl Client {
         self.cr.fetch_int(py, cmd)
     }
 
-    #[pyo3(signature = (key, *args, score = None, incr = None, encoding = None))]
+    #[pyo3(signature = (key, *values, score = None, incr = None, encoding = None))]
     fn zadd<'a>(
         &self,
         py: Python<'a>,
         key: types::Str,
-        args: Vec<types::Arg>,
+        values: Vec<types::ScalarOrMap>,
         score: Option<f64>,
         incr: Option<f64>,
         encoding: Option<String>,
@@ -569,7 +579,7 @@ impl Client {
         } else {
             cmd.arg(score);
         }
-        cmd.arg(args);
+        let cmd = values.into_iter().fold(cmd, |c, som| som.write_val_key(c));
         self.cr.execute(py, cmd, encoding)
     }
 

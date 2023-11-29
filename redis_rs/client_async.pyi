@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, Union, overload
+from typing import Dict, List, Literal, Mapping, Optional, Union, overload
 
 from redis_rs.types import Arg, Encoding, Result
 
@@ -128,6 +128,13 @@ class AsyncClient:
         key: str,
         *args: Arg,
         score: Optional[float] = None,
+        incr: Optional[float] = None,
+    ) -> int: ...
+    @overload
+    async def zadd(
+        self,
+        key: str,
+        *args: Union[Mapping[str, Arg], Mapping[bytes, Arg]],
         incr: Optional[float] = None,
     ) -> int: ...
     @overload

@@ -12,8 +12,14 @@ async def test_zadd(async_client: redis_rs.AsyncClient):
     n = await async_client.zadd(key, "b", score=3)
     assert n == 1
 
+    n = await async_client.zadd(key, {"c": 4})
+    assert n == 1
+
+    n = await async_client.zadd(key, {b"d": 4})
+    assert n == 1
+
     result = await async_client.execute("ZRANGE", key, 0, -1, encoding="utf8")
-    assert result == ["a", "b"]
+    assert result == ["a", "b", "c", "d"]
 
 
 async def test_zrange(async_client: redis_rs.AsyncClient):
