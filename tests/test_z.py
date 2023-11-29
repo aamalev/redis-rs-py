@@ -32,7 +32,7 @@ async def test_zrange(async_client: redis_rs.AsyncClient):
     assert n == 1
 
     result = await async_client.zrange(key)
-    assert result == ["a", "b"]
+    assert result == [b"a", b"b"]
 
     result_d = await async_client.zrange(key, withscores=True)
     assert result_d == {"a": 1, "b": 2}
