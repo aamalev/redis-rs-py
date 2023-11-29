@@ -130,6 +130,13 @@ class AsyncClient:
         incr: Optional[float] = None,
     ) -> int: ...
     @overload
+    async def zadd(
+        self,
+        key: str,
+        *args: Union[Dict[str, Arg], Dict[bytes, Arg]],
+        incr: Optional[float] = None,
+    ) -> int: ...
+    @overload
     async def zrange(
         self,
         key: str,
