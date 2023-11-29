@@ -143,7 +143,7 @@ class AsyncClient:
         key: str,
         start: Union[int, str] = 0,
         stop: Union[int, str] = -1,
-    ) -> List[str]: ...
+    ) -> List[Result]: ...
     @overload
     async def zrange(
         self,

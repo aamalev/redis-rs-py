@@ -583,12 +583,14 @@ impl Client {
         self.cr.execute(py, cmd, encoding)
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (
         key,
         start = types::Arg::Int(0),
         stop = types::Arg::Int(-1),
         *args,
         withscores = false,
+        encoding = None,
     ))]
     fn zrange<'a>(
         &self,
@@ -598,6 +600,7 @@ impl Client {
         stop: types::Arg,
         args: Vec<types::Arg>,
         withscores: bool,
+        encoding: Option<String>,
     ) -> PyResult<&'a PyAny> {
         let mut cmd = redis::cmd("ZRANGE")
             .arg(key)
@@ -609,7 +612,8 @@ impl Client {
             cmd.arg(b"WITHSCORES");
             self.cr.fetch_dict(py, cmd, types::Codec::Float)
         } else {
-            self.cr.fetch_list(py, cmd)
+            let encoding = types::Codec::from(encoding);
+            self.cr.execute(py, cmd, encoding)
         }
     }
 
