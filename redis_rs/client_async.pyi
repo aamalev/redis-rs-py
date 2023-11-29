@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, Union, overload
+from typing import Dict, List, Literal, Mapping, Optional, Union, overload
 
 from redis_rs.types import Arg, Encoding, Result
 
