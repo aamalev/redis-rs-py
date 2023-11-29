@@ -453,6 +453,10 @@ impl Client {
                     cmd.arg(b"*");
                     cmd.arg(m);
                 }
+                types::ScalarOrMap::BMap(m) => {
+                    cmd.arg(b"*");
+                    cmd.arg(m);
+                }
                 types::ScalarOrMap::Scalar(arg) => {
                     if let Ok(id) = arg.to_normalized_stream_msg_id() {
                         cmd.arg(id);
@@ -516,6 +520,12 @@ impl Client {
             types::ScalarOrMap::Map(m) => {
                 for (k, v) in m.into_iter() {
                     keys.push(k);
+                    ids.push(v);
+                }
+            }
+            types::ScalarOrMap::BMap(m) => {
+                for (k, v) in m.into_iter() {
+                    keys.push(String::from_utf8(k)?);
                     ids.push(v);
                 }
             }
