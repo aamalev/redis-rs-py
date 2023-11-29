@@ -133,7 +133,7 @@ class AsyncClient:
     async def zadd(
         self,
         key: str,
-        *args: Union[Dict[str, Arg], Dict[bytes, Arg]],
+        *args: Union[Mapping[str, Arg], Mapping[bytes, Arg]],
         incr: Optional[float] = None,
     ) -> int: ...
     @overload
