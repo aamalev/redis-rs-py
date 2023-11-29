@@ -546,12 +546,12 @@ impl Client {
         self.cr.fetch_int(py, cmd)
     }
 
-    #[pyo3(signature = (key, *args, score = None, incr = None, encoding = None))]
+    #[pyo3(signature = (key, *values, score = None, incr = None, encoding = None))]
     fn zadd<'a>(
         &self,
         py: Python<'a>,
         key: types::Str,
-        args: Vec<types::Arg>,
+        values: Vec<types::ScalarOrMap>,
         score: Option<f64>,
         incr: Option<f64>,
         encoding: Option<String>,
@@ -563,7 +563,7 @@ impl Client {
         } else {
             cmd.arg(score);
         }
-        cmd.arg(args);
+        let cmd = values.into_iter().fold(cmd, |c, som| som.write_val_key(c));
         self.cr.execute(py, cmd, encoding)
     }
 
