@@ -19,7 +19,22 @@ class AsyncClient:
     async def eval(
         self, script: str, numkeys: int, *keys_and_args: Arg, encoding: Optional[Encoding] = None
     ) -> Result: ...
-    async def set(self, key: str, value: Arg) -> Result: ...
+    @overload
+    async def set(
+        self,
+        key: str,
+        value: Arg,
+        ex: Optional[int] = None,
+        encoding: Optional[Encoding] = None,
+    ) -> Result: ...
+    @overload
+    async def set(
+        self,
+        key: str,
+        value: Arg,
+        px: Optional[int] = None,
+        encoding: Optional[Encoding] = None,
+    ) -> Result: ...
     async def get(self, key: str, *, encoding: Optional[Encoding] = None) -> Result: ...
     @overload
     async def hset(self, key: str, field: str, value: Arg, *pairs) -> int: ...
