@@ -48,12 +48,14 @@ impl ShardNode {
                 insecure,
                 host: _,
                 port: _,
+                tls_params,
             } => {
                 let (host, port) = self.split();
                 ConnectionAddr::TcpTls {
                     insecure,
                     host,
                     port,
+                    tls_params,
                 }
             }
             ConnectionAddr::Unix(_) => ConnectionAddr::Unix(PathBuf::from(self.addr.as_str())),
