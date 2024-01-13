@@ -2,8 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use redis::{
-    aio::{ConnectionLike},
-    Cmd, ConnectionInfo, FromRedisValue, IntoConnectionInfo, RedisError, RedisResult,
+    aio::ConnectionLike, Cmd, ConnectionInfo, FromRedisValue, IntoConnectionInfo, RedisError,
+    RedisResult,
 };
 use tokio::sync::RwLock;
 
