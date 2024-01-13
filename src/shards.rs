@@ -232,8 +232,8 @@ impl FromRedisValue for Slots {
 
 #[cfg(test)]
 mod tests {
-    use crate::shards::ShardNode;
     use super::{Shard, Slots};
+    use crate::shards::ShardNode;
     use redis::{FromRedisValue, Value};
 
     const SLOT_SIZE: u16 = 16384;
