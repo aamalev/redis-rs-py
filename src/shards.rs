@@ -3,33 +3,9 @@ use std::{
     path::PathBuf,
 };
 
-use redis::{ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value};
-
-pub(crate) const SLOT_SIZE: u16 = 16384;
-
-fn sub_key(key: &[u8]) -> &[u8] {
-    key.iter()
-        .position(|b| *b == b'{')
-        .and_then(|open| {
-            let after_open = open + 1;
-            key[after_open..]
-                .iter()
-                .position(|b| *b == b'}')
-                .and_then(|close_offset| {
-                    if close_offset != 0 {
-                        Some(&key[after_open..after_open + close_offset])
-                    } else {
-                        None
-                    }
-                })
-        })
-        .unwrap_or(key)
-}
-
-fn slot(key: &[u8]) -> u16 {
-    let key = sub_key(key);
-    crc16::State::<crc16::XMODEM>::calculate(key) % SLOT_SIZE
-}
+use redis::{
+    cluster_routing::get_slot, ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value,
+};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ShardNode {
@@ -181,7 +157,7 @@ impl Slots {
             Some(b"INFO" | b"CLIENT" | b"KEYS") => None,
             _ => cmd_iter.next(),
         };
-        if let Some(slot) = key.map(slot) {
+        if let Some(slot) = key.map(get_slot) {
             self.get_shard(slot)
         } else {
             None
