@@ -3,7 +3,7 @@ use crate::{
     pool::{Connection, Pool},
 };
 use async_trait::async_trait;
-use deadpool_redis::{Config, CreatePoolError, Runtime};
+use deadpool_redis::{Config, CreatePoolError, PoolError, Runtime};
 use redis::{aio::ConnectionLike, Cmd, ConnectionInfo};
 use std::collections::HashMap;
 
@@ -21,6 +21,15 @@ impl From<CreatePoolError> for error::RedisError {
             "",
             e.to_string(),
         )))
+    }
+}
+
+impl From<PoolError> for error::RedisError {
+    fn from(e: PoolError) -> Self {
+        match e {
+            PoolError::Backend(e) => error::RedisError::PoolError(e),
+            _ => todo!(),
+        }
     }
 }
 

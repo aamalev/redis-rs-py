@@ -7,7 +7,6 @@ use crate::{
     client_result_async::AsyncClientResult,
     cluster_async::Cluster,
     cluster_bb8::BB8Cluster,
-    cluster_deadpool::DeadPoolCluster,
     error,
     pool::{ClosedPool, Connection, Pool},
     shards_async::AsyncShards,
@@ -61,7 +60,6 @@ impl PoolManager {
             Some(true) => {
                 self.pool = match self.features.as_slice() {
                     [types::Feature::BB8, ..] => Box::new(BB8Cluster::new(nodes, ms).await),
-                    [types::Feature::DeadPool, ..] => Box::new(DeadPoolCluster::new(nodes, ms)?),
                     [types::Feature::Shards, ..] => {
                         Box::new(AsyncShards::new(nodes, ms, Some(true)).await?)
                     }
