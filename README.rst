@@ -57,8 +57,6 @@ Python wrapper for:
   | redis_cluster_async,
   | `bb8 <https://github.com/djc/bb8>`_,
   | bb8-redis,
-  | bb8-redis-cluster,
-  | deadpool-redis-cluster,
 
 
 Features
