@@ -7,7 +7,7 @@ use crate::{
 use async_trait::async_trait;
 use redis::{aio::ConnectionLike, Cmd, ConnectionInfo};
 
-type Manager = bb8_redis::RedisMultiplexedConnectionManager;
+type Manager = bb8_redis::RedisConnectionManager;
 type InnerPool = bb8::Pool<Manager>;
 
 #[derive(Clone)]
