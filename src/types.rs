@@ -322,7 +322,6 @@ impl ToRedisArgs for ScalarOrMap {
 pub enum Feature {
     Shards,
     BB8,
-    DeadPool,
 }
 
 impl TryFrom<String> for Feature {
@@ -332,7 +331,6 @@ impl TryFrom<String> for Feature {
         match value.to_ascii_lowercase().as_str() {
             "shards" => Ok(Feature::Shards),
             "bb8" => Ok(Feature::BB8),
-            "deadpool" | "dead-pool" | "dead_pool" | "dp" => Ok(Feature::DeadPool),
             _ => Err("Unknown".to_string()),
         }
     }
