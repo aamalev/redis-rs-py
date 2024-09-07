@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 async-trait = "0.1.73"
 redis = { version = "0.25.1", features = ["tokio-comp", "cluster-async"] }
-pyo3 = { version = "0.20.0", features = ["extension-module"] }
+pyo3 = { version = "0.22.2", features = ["extension-module"] }
 pyo3-asyncio = { version = "0.20.0", features = ["tokio-runtime"] }
 tokio = "1.32.0"
 bb8 = "0.8.1"
