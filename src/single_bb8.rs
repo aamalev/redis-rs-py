@@ -14,7 +14,6 @@ type InnerPool = bb8::Pool<Manager>;
 pub struct BB8Pool {
     pub info: ConnectionInfo,
     pool: InnerPool,
-    pub id: Option<String>,
 }
 
 impl BB8Pool {
@@ -28,7 +27,6 @@ impl BB8Pool {
         Ok(Self {
             pool,
             info,
-            id: None,
         })
     }
 }
