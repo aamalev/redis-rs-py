@@ -24,10 +24,7 @@ impl BB8Pool {
             .idle_timeout(Some(Duration::new(60, 0)))
             .build(manager)
             .await?;
-        Ok(Self {
-            pool,
-            info,
-        })
+        Ok(Self { pool, info })
     }
 }
 
