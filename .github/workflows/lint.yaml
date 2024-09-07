@@ -39,9 +39,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: pip install ruff mypy
-      - name: Ruff check lint
-        run: ruff redis_rs tests
-      - name: Ruff check format
+      - name: Ruff check
+        run: ruff check redis_rs tests
+      - name: Ruff format
         run: ruff format --check redis_rs tests
       - name: Run mypy
         run: mypy redis_rs tests
