@@ -197,10 +197,33 @@ impl Client {
         self.cr.execute(py, cmd, encoding)
     }
 
-    #[pyo3(signature = (key, value))]
-    fn set<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
-        let cmd = redis::cmd("SET").arg(key).arg(value).to_owned();
-        self.cr.execute(py, cmd, types::Codec::default())
+    #[pyo3(signature = (
+        key,
+        value,
+        ex = None,
+        px = None,
+        **kwargs,
+    ))]
+    fn set<'a>(
+        &self,
+        py: Python<'a>,
+        key: types::Str,
+        value: types::Arg,
+        ex: Option<usize>,
+        px: Option<usize>,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<&'a PyAny> {
+        let mut cmd = redis::cmd("SET").arg(key).arg(value).to_owned();
+        if let Some(ex) = ex {
+            cmd.arg(b"EX");
+            cmd.arg(ex);
+        }
+        if let Some(px) = px {
+            cmd.arg(b"PX");
+            cmd.arg(px);
+        }
+        let encoding = types::Codec::from(kwargs);
+        self.cr.execute(py, cmd, encoding)
     }
 
     #[pyo3(signature = (key, **kwargs))]
