@@ -60,7 +60,7 @@ impl Pool for Node {
     fn status(&self) -> HashMap<&str, redis::Value> {
         let mut result = HashMap::new();
         result.insert("closed", redis::Value::Int(0));
-        result.insert("impl", redis::Value::Data("client_async".into()));
+        result.insert("impl", redis::Value::BulkString("client_async".into()));
         result.insert("cluster", redis::Value::Int(0));
         result
     }

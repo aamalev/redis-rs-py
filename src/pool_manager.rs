@@ -90,15 +90,15 @@ impl PoolManager {
             .iter()
             .map(|s| {
                 if let Some(username) = s.redis.username.clone() {
-                    result.insert("username", redis::Value::Data(username.as_bytes().to_vec()));
+                    result.insert("username", redis::Value::SimpleString(username));
                 }
                 if s.redis.password.is_some() {
                     result.insert("auth", redis::Value::Int(1));
                 }
-                redis::Value::Data(s.addr.to_string().as_bytes().to_vec())
+                redis::Value::SimpleString(s.addr.to_string())
             })
             .collect();
-        result.insert("initial_nodes", redis::Value::Bulk(initial_nodes));
+        result.insert("initial_nodes", redis::Value::Array(initial_nodes));
         result.insert("max_size", redis::Value::Int(self.max_size as i64));
         result
             .into_iter()

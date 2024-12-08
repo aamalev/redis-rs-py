@@ -171,12 +171,12 @@ impl Slots {
 
 impl FromRedisValue for Slots {
     fn from_redis_value(v: &Value) -> RedisResult<Self> {
-        if let Value::Bulk(v) = v {
+        if let Value::Array(v) = v {
             let mut id_map = HashMap::new();
             let m = v
                 .iter()
                 .filter_map(|v2| {
-                    if let Value::Bulk(v) = v2 {
+                    if let Value::Array(v) = v2 {
                         let mut iter = v.iter();
                         let _ = iter.next();
                         let n = iter
@@ -185,12 +185,13 @@ impl FromRedisValue for Slots {
                             .unwrap_or_default();
                         let mut nodes: Vec<String> = iter
                             .filter_map(|v| {
-                                if let Value::Bulk(mut v) = v.clone() {
+                                if let Value::Array(mut v) = v.clone() {
                                     v.truncate(3);
                                     let mut addrs: Vec<String> = v
                                         .into_iter()
                                         .filter_map(|x| match x {
-                                            Value::Data(d) => String::from_utf8(d).ok(),
+                                            Value::BulkString(d) => String::from_utf8(d).ok(),
+                                            Value::SimpleString(s) => Some(s),
                                             Value::Int(n) => Some(n.to_string()),
                                             _ => None,
                                         })
@@ -240,13 +241,13 @@ mod tests {
 
     #[test]
     fn slots_parse() {
-        let cluster_slots = Value::Bulk(vec![Value::Bulk(vec![
+        let cluster_slots = Value::Array(vec![Value::Array(vec![
             Value::Int(0),
             Value::Int(2),
-            Value::Bulk(vec![
-                Value::Data(b"1.2.3.4".to_vec()),
+            Value::Array(vec![
+                Value::BulkString(b"1.2.3.4".to_vec()),
                 Value::Int(6379),
-                Value::Data(b"123456789".to_vec()),
+                Value::BulkString(b"123456789".to_vec()),
             ]),
         ])]);
         let slots = Slots::from_redis_value(&cluster_slots).expect("Slots parse error");

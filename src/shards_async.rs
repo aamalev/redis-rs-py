@@ -198,17 +198,13 @@ impl Pool for AsyncShards {
     fn status(&self) -> HashMap<&str, redis::Value> {
         let mut result = HashMap::new();
         result.insert("closed", redis::Value::Int(0));
-        result.insert("impl", redis::Value::Data("shards_async".into()));
+        result.insert("impl", redis::Value::SimpleString("shards_async".into()));
         result.insert("cluster", redis::Value::Int(self.is_cluster as i64));
         if let Ok(nodes) = self.nodes.try_read() {
             let mut addrs: Vec<String> = nodes.keys().cloned().collect();
             addrs.sort();
-            let addrs = redis::Value::Bulk(
-                addrs
-                    .into_iter()
-                    .map(|s| redis::Value::Data(s.as_bytes().to_vec()))
-                    .collect(),
-            );
+            let addrs =
+                redis::Value::Array(addrs.into_iter().map(redis::Value::SimpleString).collect());
             result.insert("nodes", addrs);
         }
         result
