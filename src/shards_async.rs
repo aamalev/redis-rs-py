@@ -2,8 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use redis::{
-    aio::ConnectionLike, Cmd, ConnectionInfo, FromRedisValue, IntoConnectionInfo, RedisError,
-    RedisResult,
+    aio::ConnectionLike, Cmd, ConnectionInfo, IntoConnectionInfo, RedisError, RedisResult, Value,
 };
 use tokio::sync::RwLock;
 
@@ -67,9 +66,9 @@ impl AsyncShards {
             let id = node
                 .req_packed_command(redis::cmd("CLUSTER").arg("MYID"))
                 .await;
-            if let Ok(id) = id {
+            if let Ok(Value::BulkString(id)) = id {
                 info = Some(node.info.clone());
-                let id = String::from_redis_value(&id)?;
+                let id = String::from_utf8_lossy(&id).to_string();
                 node.id = Some(id.clone());
                 let shard_node = self.slots.read().await.get_node_by_id(id).unwrap();
                 nodes.insert(shard_node.addr, node);
