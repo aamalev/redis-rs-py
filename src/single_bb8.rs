@@ -45,7 +45,7 @@ impl Pool for BB8Pool {
 
     fn status(&self) -> HashMap<&str, redis::Value> {
         let mut result = HashMap::new();
-        result.insert("impl", redis::Value::Data("bb8_redis".into()));
+        result.insert("impl", redis::Value::SimpleString("bb8_redis".into()));
         result.insert("closed", redis::Value::Int(0));
         result.insert("cluster", redis::Value::Int(0));
         let state = self.pool.state();

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use pyo3::{
-    types::{PyBytes, PyDict, PyList},
+    types::{PyBytes, PyDict, PyList, PySet},
     FromPyObject, PyObject, Python, ToPyObject,
 };
 use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
@@ -126,12 +126,24 @@ pub fn decode(py: Python, v: Vec<u8>, codec: Codec) -> PyObject {
 
 fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyObject {
     match value {
-        Value::Data(v) => decode(py, v, codec),
+        Value::BulkString(v) => decode(py, v, codec),
         Value::Nil => py.None(),
         Value::Int(i) => i.to_object(py),
-        Value::Bulk(_) => to_dict(py, value, codec),
-        Value::Status(s) => s.to_object(py),
+        Value::Array(_) => to_dict(py, value, codec),
+        Value::SimpleString(s) => s.to_object(py),
         Value::Okay => true.to_object(py),
+        Value::Map(_) => to_dict(py, value, codec),
+        Value::Set(_) => to_object(py, value, codec),
+        Value::Double(f) => f.to_object(py),
+        Value::Boolean(b) => b.to_object(py),
+        Value::Attribute {
+            data: _,
+            attributes: _,
+        } => todo!(),
+        Value::VerbatimString { format: _, text: _ } => todo!(),
+        Value::BigNumber(_) => todo!(),
+        Value::Push { kind: _, data: _ } => todo!(),
+        Value::ServerError(_) => todo!(),
     }
 }
 
@@ -143,7 +155,7 @@ pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyObject {
             let val = _to_dict(py, value, codec.clone());
             result.set_item(k, val).unwrap();
         }
-    } else if let Value::Bulk(v) = value {
+    } else if let Value::Array(v) = value {
         for (n, value) in v.into_iter().enumerate() {
             let map: HashMap<String, Value> =
                 FromRedisValue::from_redis_value(&value).unwrap_or_default();
@@ -163,16 +175,34 @@ pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyObject {
 
 pub fn to_object(py: Python, value: Value, codec: Codec) -> PyObject {
     match value {
-        Value::Data(v) => decode(py, v, codec),
+        Value::BulkString(v) => decode(py, v, codec),
         Value::Nil => py.None(),
         Value::Int(i) => i.to_object(py),
-        Value::Bulk(bulk) => PyList::new(
+        Value::Array(bulk) => PyList::new(
             py,
             bulk.into_iter().map(|v| to_object(py, v, codec.clone())),
         )
         .to_object(py),
-        Value::Status(s) => s.to_object(py),
+        Value::SimpleString(s) => s.to_object(py),
         Value::Okay => true.to_object(py),
+        Value::Map(_) => to_dict(py, value, codec),
+        Value::Set(s) => {
+            let result = PySet::empty(py).unwrap();
+            for v in s.into_iter() {
+                let _ = result.add(to_object(py, v, codec.clone()));
+            }
+            result.to_object(py)
+        }
+        Value::Double(f) => f.to_object(py),
+        Value::Boolean(b) => b.to_object(py),
+        Value::Attribute {
+            data: _,
+            attributes: _,
+        } => todo!(),
+        Value::VerbatimString { format: _, text: _ } => todo!(),
+        Value::BigNumber(_) => todo!(),
+        Value::Push { kind: _, data: _ } => todo!(),
+        Value::ServerError(_) => todo!(),
     }
 }
 
