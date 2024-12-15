@@ -1,9 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use pyo3::{
-    prelude::*,
-    types::{PyBytes, PyDict},
-};
+use pyo3::{prelude::*, types::PyBytes};
 use pyo3_asyncio::tokio::future_into_py;
 use redis::{Cmd, Value};
 
@@ -53,7 +50,9 @@ impl ClientResult for AsyncClientResult {
         future_into_py(py, async move {
             let cm = cm.read().await;
             let value = cm.pool.execute(cmd).await?;
-            Ok(Python::with_gil(|py| types::to_object(py, value, encoding)))
+            Ok(Python::with_gil(|py| {
+                types::to_object(py, value, encoding)
+            })?)
         })
     }
 
@@ -96,7 +95,7 @@ impl ClientResult for AsyncClientResult {
         future_into_py(py, async move {
             let cm = cm.read().await;
             let value = cm.pool.execute(cmd).await?;
-            Ok(Python::with_gil(|py| types::to_dict(py, value, encoding)))
+            Ok(Python::with_gil(|py| types::to_dict(py, value, encoding))?)
         })
     }
 
@@ -105,13 +104,7 @@ impl ClientResult for AsyncClientResult {
         future_into_py(py, async move {
             let cm = cm.read().await;
             let map: HashMap<String, f64> = cm.execute(cmd).await?;
-            Ok(Python::with_gil(|py| {
-                let result = PyDict::new(py);
-                for (k, v) in map.into_iter() {
-                    result.set_item(k, v).unwrap();
-                }
-                result.to_object(py)
-            }))
+            Ok(Python::with_gil(|py| map.to_object(py)))
         })
     }
 
