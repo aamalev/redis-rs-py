@@ -24,7 +24,6 @@ impl ClusterManager {
     }
 }
 
-#[async_trait]
 impl bb8::ManageConnection for ClusterManager {
     type Connection = ClusterConnection;
     type Error = RedisError;
