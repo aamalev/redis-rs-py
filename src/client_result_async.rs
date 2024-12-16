@@ -50,9 +50,9 @@ impl ClientResult for AsyncClientResult {
         future_into_py(py, async move {
             let cm = cm.read().await;
             let value = cm.pool.execute(cmd).await?;
-            Ok(Python::with_gil(|py| {
+            Python::with_gil(|py| {
                 types::to_object(py, value, encoding)
-            })?)
+            })
         })
     }
 
@@ -95,7 +95,7 @@ impl ClientResult for AsyncClientResult {
         future_into_py(py, async move {
             let cm = cm.read().await;
             let value = cm.pool.execute(cmd).await?;
-            Ok(Python::with_gil(|py| types::to_dict(py, value, encoding))?)
+            Python::with_gil(|py| types::to_dict(py, value, encoding))
         })
     }
 
