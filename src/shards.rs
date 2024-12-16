@@ -190,7 +190,9 @@ impl FromRedisValue for Slots {
                                     let mut addrs: Vec<String> = v
                                         .into_iter()
                                         .filter_map(|x| match x {
-                                            Value::BulkString(d) => String::from_utf8(d).ok(),
+                                            Value::BulkString(d) => {
+                                                Some(String::from_utf8_lossy(&d).to_string())
+                                            }
                                             Value::SimpleString(s) => Some(s),
                                             Value::Int(n) => Some(n.to_string()),
                                             _ => None,

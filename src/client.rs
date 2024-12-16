@@ -541,7 +541,7 @@ impl Client {
             }
             types::ScalarOrMap::BMap(m) => {
                 for (k, v) in m.into_iter() {
-                    keys.push(String::from_utf8(k)?);
+                    keys.push(String::from_utf8_lossy(&k).to_string());
                     ids.push(v);
                 }
             }
