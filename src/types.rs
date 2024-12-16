@@ -55,12 +55,12 @@ impl From<Option<&PyDict>> for Codec {
 
 fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::ValueError> {
     match codec {
-        Codec::String => Ok(String::from_utf8(v)?.to_object(py)),
-        Codec::Float => Ok(String::from_utf8(v)?.parse::<f64>()?.to_object(py)),
-        Codec::Int => Ok(String::from_utf8(v)?.parse::<i64>()?.to_object(py)),
+        Codec::String => Ok(String::from_utf8_lossy(&v).to_object(py)),
+        Codec::Float => Ok(String::from_utf8_lossy(&v).parse::<f64>()?.to_object(py)),
+        Codec::Int => Ok(String::from_utf8_lossy(&v).parse::<i64>()?.to_object(py)),
         Codec::Info => {
             let result = PyDict::new(py);
-            for (key, value) in String::from_utf8(v)?
+            for (key, value) in String::from_utf8_lossy(&v)
                 .split("\r\n")
                 .filter_map(|x| x.split_once(':'))
             {
@@ -217,7 +217,7 @@ pub enum Str {
 impl From<Str> for String {
     fn from(value: Str) -> Self {
         match value {
-            Str::Bytes(b) => String::from_utf8(b).unwrap(),
+            Str::Bytes(b) => String::from_utf8_lossy(&b).to_string(),
             Str::String(s) => s,
         }
     }
@@ -273,7 +273,7 @@ impl Arg {
 
         match self {
             Self::String(s) => from_str(s),
-            Self::Bytes(b) => from_str(String::from_utf8(b.to_vec())?.as_str()),
+            Self::Bytes(b) => from_str(&String::from_utf8_lossy(b)),
             Self::Float(f) => Ok(f.to_string().replace('.', "-")),
             Self::Int(i) => Ok(i.to_string()),
         }
@@ -283,7 +283,7 @@ impl Arg {
 impl From<Arg> for String {
     fn from(value: Arg) -> Self {
         match value {
-            Arg::Bytes(b) => String::from_utf8(b).unwrap_or_default(),
+            Arg::Bytes(b) => String::from_utf8_lossy(&b).to_string(),
             Arg::String(s) => s,
             Arg::Float(f) => f.to_string(),
             Arg::Int(i) => i.to_string(),
