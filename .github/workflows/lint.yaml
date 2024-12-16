@@ -15,7 +15,7 @@ on:
 jobs:
   fmt:
     name: Rustfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -26,7 +26,7 @@ jobs:
 
   clippy:
     name: Rust Clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Run Clippy
@@ -34,7 +34,7 @@ jobs:
 
   py:
     name: Python linters
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
