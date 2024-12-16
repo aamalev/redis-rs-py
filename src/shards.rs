@@ -197,13 +197,12 @@ impl FromRedisValue for Slots {
                                         })
                                         .collect();
 
-                                    if addrs.is_empty() {
-                                        None
-                                    } else {
-                                        let id = addrs.pop().unwrap();
+                                    if let Some(id) = addrs.pop() {
                                         let addr = addrs.join(":");
                                         id_map.insert(id, ShardNode::from(addr.as_str()));
                                         Some(addr)
+                                    } else {
+                                        None
                                     }
                                 } else {
                                     None

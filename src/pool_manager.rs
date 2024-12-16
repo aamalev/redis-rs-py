@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use redis::{Cmd, ConnectionInfo, FromRedisValue};
+use redis::{Cmd, ConnectionInfo, FromRedisValue, Value};
 
 use crate::{
     client::Client,
@@ -108,8 +108,12 @@ impl PoolManager {
 
     pub async fn execute<T: FromRedisValue>(&self, cmd: Cmd) -> Result<T, error::RedisError> {
         let value = self.pool.execute(cmd).await?;
-        let result: T = FromRedisValue::from_redis_value(&value)?;
-        Ok(result)
+        if let Value::ServerError(err) = value {
+            Err(redis::RedisError::from(err))?
+        } else {
+            let result: T = FromRedisValue::from_redis_value(&value)?;
+            Ok(result)
+        }
     }
 
     pub async fn get_connection(&self) -> Result<Connection, error::RedisError> {

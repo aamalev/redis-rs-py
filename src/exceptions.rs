@@ -15,7 +15,15 @@ impl From<error::RedisError> for PyErr {
         match e {
             error::RedisError::CommandError(s) => RedisError::new_err(s),
             error::RedisError::PoolError(e) => PoolError::new_err(e.to_string()),
-            error::RedisError::RedisError(e) => RedisError::new_err(e.to_string()),
+            error::RedisError::RedisError(e) => {
+                let args = match (e.code(), e.detail()) {
+                    (Some("ERR"), Some(detail)) => detail.to_string(),
+                    (Some(code), Some(detail)) => format!("{code} {detail}"),
+                    (Some(code), None) => code.to_string(),
+                    _ => e.to_string(),
+                };
+                RedisError::new_err(args)
+            }
             error::RedisError::NotFoundNode => PoolError::new_err("Not found node".to_string()),
             error::RedisError::NoSlot => PoolError::new_err("Not found slot".to_string()),
         }

@@ -33,7 +33,7 @@ impl Client {
         let is_auth = status.remove("auth");
         let result = PyDict::new(py);
         for (k, v) in status.into_iter() {
-            let value = types::to_object(py, v, types::Codec::String);
+            let value = types::to_object(py, v, types::Codec::String)?;
             result.set_item(k, value)?;
         }
         if let Some(redis::Value::Int(c)) = is_cluster {
