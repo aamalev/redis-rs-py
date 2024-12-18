@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use pyo3::{
-    types::{PyBytes, PyDict, PyList},
-    FromPyObject, PyObject, Python, ToPyObject,
+    types::{PyBytes, PyDict, PyList, PySet},
+    FromPyObject, PyObject, PyResult, Python, ToPyObject,
 };
 use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
 
@@ -55,12 +55,12 @@ impl From<Option<&PyDict>> for Codec {
 
 fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::ValueError> {
     match codec {
-        Codec::String => Ok(String::from_utf8(v)?.to_object(py)),
-        Codec::Float => Ok(String::from_utf8(v)?.parse::<f64>()?.to_object(py)),
-        Codec::Int => Ok(String::from_utf8(v)?.parse::<i64>()?.to_object(py)),
+        Codec::String => Ok(String::from_utf8_lossy(&v).to_object(py)),
+        Codec::Float => Ok(String::from_utf8_lossy(&v).parse::<f64>()?.to_object(py)),
+        Codec::Int => Ok(String::from_utf8_lossy(&v).parse::<i64>()?.to_object(py)),
         Codec::Info => {
             let result = PyDict::new(py);
-            for (key, value) in String::from_utf8(v)?
+            for (key, value) in String::from_utf8_lossy(&v)
                 .split("\r\n")
                 .filter_map(|x| x.split_once(':'))
             {
@@ -109,7 +109,7 @@ fn from_json(py: Python<'_>, v: serde_json::Value) -> Result<PyObject, error::Va
         serde_json::Value::Object(m) => {
             let result = PyDict::new(py);
             for (k, v) in m.into_iter() {
-                result.set_item(k, from_json(py, v)?).unwrap();
+                result.set_item(k, from_json(py, v)?)?;
             }
             result.to_object(py)
         }
@@ -124,56 +124,95 @@ pub fn decode(py: Python, v: Vec<u8>, codec: Codec) -> PyObject {
     }
 }
 
-fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyObject {
-    match value {
-        Value::Data(v) => decode(py, v, codec),
+fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyResult<PyObject> {
+    let result = match value {
+        Value::BulkString(v) => decode(py, v, codec),
         Value::Nil => py.None(),
         Value::Int(i) => i.to_object(py),
-        Value::Bulk(_) => to_dict(py, value, codec),
-        Value::Status(s) => s.to_object(py),
+        Value::Array(_) => to_dict(py, value, codec)?,
+        Value::SimpleString(s) => s.to_object(py),
         Value::Okay => true.to_object(py),
-    }
+        Value::Map(_) => to_dict(py, value, codec)?,
+        Value::Set(_) => to_object(py, value, codec)?,
+        Value::Double(f) => f.to_object(py),
+        Value::Boolean(b) => b.to_object(py),
+        Value::Attribute {
+            data: _,
+            attributes: _,
+        } => todo!(),
+        Value::VerbatimString { format: _, text: _ } => todo!(),
+        Value::BigNumber(_) => todo!(),
+        Value::Push { kind: _, data: _ } => todo!(),
+        Value::ServerError(err) => Err(error::RedisError::RedisError(err.into()))?,
+    };
+    Ok(result)
 }
 
-pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyObject {
-    let result = PyDict::new(py);
-    let map: HashMap<String, Value> = FromRedisValue::from_redis_value(&value).unwrap_or_default();
-    if !map.is_empty() {
-        for (k, value) in map.into_iter() {
-            let val = _to_dict(py, value, codec.clone());
-            result.set_item(k, val).unwrap();
-        }
-    } else if let Value::Bulk(v) = value {
-        for (n, value) in v.into_iter().enumerate() {
-            let map: HashMap<String, Value> =
-                FromRedisValue::from_redis_value(&value).unwrap_or_default();
-            if map.len() == 1 {
-                for (k, value) in map.into_iter() {
-                    let val = _to_dict(py, value, codec.clone());
-                    result.set_item(k, val).unwrap();
+pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<PyObject> {
+    if let Value::ServerError(err) = value {
+        Err(error::RedisError::RedisError(err.into()))?
+    } else {
+        let result = PyDict::new(py);
+        let map: HashMap<String, Value> =
+            FromRedisValue::from_redis_value(&value).unwrap_or_default();
+        if !map.is_empty() {
+            for (k, value) in map.into_iter() {
+                let val = _to_dict(py, value, codec.clone())?;
+                result.set_item(k, val)?;
+            }
+        } else if let Value::Array(v) = value {
+            for (n, value) in v.into_iter().enumerate() {
+                let map: HashMap<String, Value> =
+                    FromRedisValue::from_redis_value(&value).unwrap_or_default();
+                if map.len() == 1 {
+                    for (k, value) in map.into_iter() {
+                        let val = _to_dict(py, value, codec.clone())?;
+                        result.set_item(k, val)?;
+                    }
+                } else {
+                    let value = _to_dict(py, value, codec.clone())?;
+                    result.set_item(n, value)?;
                 }
-            } else {
-                let value = _to_dict(py, value, codec.clone());
-                result.set_item(n, value).unwrap();
             }
         }
+        Ok(result.to_object(py))
     }
-    result.to_object(py)
 }
 
-pub fn to_object(py: Python, value: Value, codec: Codec) -> PyObject {
-    match value {
-        Value::Data(v) => decode(py, v, codec),
+pub fn to_object(py: Python, value: Value, codec: Codec) -> PyResult<PyObject> {
+    let result = match value {
+        Value::BulkString(v) => decode(py, v, codec),
         Value::Nil => py.None(),
         Value::Int(i) => i.to_object(py),
-        Value::Bulk(bulk) => PyList::new(
-            py,
-            bulk.into_iter().map(|v| to_object(py, v, codec.clone())),
-        )
-        .to_object(py),
-        Value::Status(s) => s.to_object(py),
+        Value::Array(bulk) => {
+            let mut result = vec![];
+            for v in bulk.into_iter() {
+                result.push(to_object(py, v, codec.clone())?);
+            }
+            PyList::new(py, result).to_object(py)
+        }
+        Value::SimpleString(s) => s.to_object(py),
         Value::Okay => true.to_object(py),
-    }
+        Value::Map(_) => to_dict(py, value, codec)?,
+        Value::Set(s) => {
+            let result = PySet::empty(py)?;
+            for v in s.into_iter() {
+                let _ = result.add(to_object(py, v, codec.clone())?);
+            }
+            result.to_object(py)
+        }
+        Value::Double(f) => f.to_object(py),
+        Value::Boolean(b) => b.to_object(py),
+        Value::Attribute {
+            data: _,
+            attributes: _,
+        } => todo!(),
+        Value::VerbatimString { format: _, text: _ } => todo!(),
+        Value::BigNumber(_) => todo!(),
+        Value::Push { kind: _, data: _ } => todo!(),
+        Value::ServerError(err) => Err(error::RedisError::RedisError(err.into()))?,
+    };
+    Ok(result)
 }
 
 #[derive(FromPyObject)]
@@ -187,7 +226,7 @@ pub enum Str {
 impl From<Str> for String {
     fn from(value: Str) -> Self {
         match value {
-            Str::Bytes(b) => String::from_utf8(b).unwrap(),
+            Str::Bytes(b) => String::from_utf8_lossy(&b).to_string(),
             Str::String(s) => s,
         }
     }
@@ -243,7 +282,7 @@ impl Arg {
 
         match self {
             Self::String(s) => from_str(s),
-            Self::Bytes(b) => from_str(String::from_utf8(b.to_vec())?.as_str()),
+            Self::Bytes(b) => from_str(&String::from_utf8_lossy(b)),
             Self::Float(f) => Ok(f.to_string().replace('.', "-")),
             Self::Int(i) => Ok(i.to_string()),
         }
@@ -253,7 +292,7 @@ impl Arg {
 impl From<Arg> for String {
     fn from(value: Arg) -> Self {
         match value {
-            Arg::Bytes(b) => String::from_utf8(b).unwrap_or_default(),
+            Arg::Bytes(b) => String::from_utf8_lossy(&b).to_string(),
             Arg::String(s) => s,
             Arg::Float(f) => f.to_string(),
             Arg::Int(i) => i.to_string(),
@@ -322,7 +361,6 @@ impl ToRedisArgs for ScalarOrMap {
 pub enum Feature {
     Shards,
     BB8,
-    DeadPool,
 }
 
 impl TryFrom<String> for Feature {
@@ -332,7 +370,6 @@ impl TryFrom<String> for Feature {
         match value.to_ascii_lowercase().as_str() {
             "shards" => Ok(Feature::Shards),
             "bb8" => Ok(Feature::BB8),
-            "deadpool" | "dead-pool" | "dead_pool" | "dp" => Ok(Feature::DeadPool),
             _ => Err("Unknown".to_string()),
         }
     }

@@ -15,7 +15,7 @@ on:
 jobs:
   fmt:
     name: Rustfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -26,7 +26,7 @@ jobs:
 
   clippy:
     name: Rust Clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Run Clippy
@@ -34,14 +34,14 @@ jobs:
 
   py:
     name: Python linters
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: pip install ruff mypy
-      - name: Ruff check lint
-        run: ruff redis_rs tests
-      - name: Ruff check format
+      - name: Ruff check
+        run: ruff check redis_rs tests
+      - name: Ruff format
         run: ruff format --check redis_rs tests
       - name: Run mypy
         run: mypy redis_rs tests

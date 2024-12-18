@@ -24,7 +24,6 @@ impl ClusterManager {
     }
 }
 
-#[async_trait]
 impl bb8::ManageConnection for ClusterManager {
     type Connection = ClusterConnection;
     type Error = RedisError;
@@ -85,7 +84,7 @@ impl Pool for BB8Cluster {
     fn status(&self) -> HashMap<&str, redis::Value> {
         let mut result = HashMap::new();
         result.insert("closed", redis::Value::Int(0));
-        result.insert("impl", redis::Value::Data("bb8_cluster".into()));
+        result.insert("impl", redis::Value::SimpleString("bb8_cluster".into()));
         result.insert("cluster", redis::Value::Int(1));
         let state = self.pool.state();
         result.insert("connections", redis::Value::Int(state.connections.into()));

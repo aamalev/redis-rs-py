@@ -5,7 +5,6 @@ mod client_result;
 mod client_result_async;
 mod cluster_async;
 mod cluster_bb8;
-mod cluster_deadpool;
 mod error;
 mod exceptions;
 mod pool;
@@ -13,7 +12,6 @@ mod pool_manager;
 mod shards;
 mod shards_async;
 mod single_bb8;
-mod single_deadpool;
 mod single_node;
 mod types;
 

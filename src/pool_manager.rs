@@ -1,18 +1,16 @@
 use std::{collections::HashMap, sync::Arc};
 
-use redis::{Cmd, ConnectionInfo, FromRedisValue};
+use redis::{Cmd, ConnectionInfo, FromRedisValue, Value};
 
 use crate::{
     client::Client,
     client_result_async::AsyncClientResult,
     cluster_async::Cluster,
     cluster_bb8::BB8Cluster,
-    cluster_deadpool::DeadPoolCluster,
     error,
     pool::{ClosedPool, Connection, Pool},
     shards_async::AsyncShards,
     single_bb8::BB8Pool,
-    single_deadpool::DeadPool,
     single_node::Node,
     types,
 };
@@ -61,7 +59,6 @@ impl PoolManager {
             Some(true) => {
                 self.pool = match self.features.as_slice() {
                     [types::Feature::BB8, ..] => Box::new(BB8Cluster::new(nodes, ms).await),
-                    [types::Feature::DeadPool, ..] => Box::new(DeadPoolCluster::new(nodes, ms)?),
                     [types::Feature::Shards, ..] => {
                         Box::new(AsyncShards::new(nodes, ms, Some(true)).await?)
                     }
@@ -71,9 +68,6 @@ impl PoolManager {
             Some(false) => {
                 self.pool = match self.features.as_slice() {
                     [types::Feature::BB8, ..] => Box::new(BB8Pool::new(nodes.remove(0), ms).await?),
-                    [types::Feature::DeadPool, ..] => {
-                        Box::new(DeadPool::new(nodes.remove(0), ms).await?)
-                    }
                     [types::Feature::Shards, ..] => {
                         Box::new(AsyncShards::new(nodes, ms, Some(false)).await?)
                     }
@@ -96,15 +90,15 @@ impl PoolManager {
             .iter()
             .map(|s| {
                 if let Some(username) = s.redis.username.clone() {
-                    result.insert("username", redis::Value::Data(username.as_bytes().to_vec()));
+                    result.insert("username", redis::Value::SimpleString(username));
                 }
                 if s.redis.password.is_some() {
                     result.insert("auth", redis::Value::Int(1));
                 }
-                redis::Value::Data(s.addr.to_string().as_bytes().to_vec())
+                redis::Value::SimpleString(s.addr.to_string())
             })
             .collect();
-        result.insert("initial_nodes", redis::Value::Bulk(initial_nodes));
+        result.insert("initial_nodes", redis::Value::Array(initial_nodes));
         result.insert("max_size", redis::Value::Int(self.max_size as i64));
         result
             .into_iter()
@@ -114,8 +108,12 @@ impl PoolManager {
 
     pub async fn execute<T: FromRedisValue>(&self, cmd: Cmd) -> Result<T, error::RedisError> {
         let value = self.pool.execute(cmd).await?;
-        let result: T = FromRedisValue::from_redis_value(&value)?;
-        Ok(result)
+        if let Value::ServerError(err) = value {
+            Err(redis::RedisError::from(err))?
+        } else {
+            let result: T = FromRedisValue::from_redis_value(&value)?;
+            Ok(result)
+        }
     }
 
     pub async fn get_connection(&self) -> Result<Connection, error::RedisError> {

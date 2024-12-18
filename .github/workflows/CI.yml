@@ -6,7 +6,7 @@ on:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4.1.1
     - name: Install hatch
@@ -20,13 +20,13 @@ jobs:
         command: build
         args: --release --sdist -o dist --find-interpreter -F rustls
     - name: Upload wheels
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wheels
         path: dist
 
   windows:
-    runs-on: windows-latest
+    runs-on: windows-22.04
     steps:
     - uses: actions/checkout@v4.1.1
     - name: Install hatch
@@ -38,7 +38,7 @@ jobs:
         command: build
         args: --release -o dist --find-interpreter -F rustls
     - name: Upload wheels
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wheels
         path: dist
@@ -48,7 +48,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4.1.1
     - name: Set up Python
-      uses: actions/setup-python@v4.7.1
+      uses: actions/setup-python@v5.3.0
       with:
         python-version: '3.x'
     - name: Install hatch
@@ -60,7 +60,7 @@ jobs:
         command: build
         args: --release -o dist --universal2 --find-interpreter -F rustls
     - name: Upload wheels
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wheels
         path: dist
@@ -73,7 +73,7 @@ jobs:
       url: https://pypi.org/project/redis-rs/${{ github.ref_name }}
     needs: [ macos, windows, linux ]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: wheels
       - name: Publish to PyPI

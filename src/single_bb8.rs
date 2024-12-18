@@ -7,14 +7,13 @@ use crate::{
 use async_trait::async_trait;
 use redis::{aio::ConnectionLike, Cmd, ConnectionInfo};
 
-type Manager = bb8_redis::RedisMultiplexedConnectionManager;
+type Manager = bb8_redis::RedisConnectionManager;
 type InnerPool = bb8::Pool<Manager>;
 
 #[derive(Clone)]
 pub struct BB8Pool {
     pub info: ConnectionInfo,
     pool: InnerPool,
-    pub id: Option<String>,
 }
 
 impl BB8Pool {
@@ -25,11 +24,7 @@ impl BB8Pool {
             .idle_timeout(Some(Duration::new(60, 0)))
             .build(manager)
             .await?;
-        Ok(Self {
-            pool,
-            info,
-            id: None,
-        })
+        Ok(Self { pool, info })
     }
 }
 
@@ -50,7 +45,7 @@ impl Pool for BB8Pool {
 
     fn status(&self) -> HashMap<&str, redis::Value> {
         let mut result = HashMap::new();
-        result.insert("impl", redis::Value::Data("bb8_redis".into()));
+        result.insert("impl", redis::Value::SimpleString("bb8_redis".into()));
         result.insert("closed", redis::Value::Int(0));
         result.insert("cluster", redis::Value::Int(0));
         let state = self.pool.state();

@@ -3,33 +3,9 @@ use std::{
     path::PathBuf,
 };
 
-use redis::{ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value};
-
-pub(crate) const SLOT_SIZE: u16 = 16384;
-
-fn sub_key(key: &[u8]) -> &[u8] {
-    key.iter()
-        .position(|b| *b == b'{')
-        .and_then(|open| {
-            let after_open = open + 1;
-            key[after_open..]
-                .iter()
-                .position(|b| *b == b'}')
-                .and_then(|close_offset| {
-                    if close_offset != 0 {
-                        Some(&key[after_open..after_open + close_offset])
-                    } else {
-                        None
-                    }
-                })
-        })
-        .unwrap_or(key)
-}
-
-fn slot(key: &[u8]) -> u16 {
-    let key = sub_key(key);
-    crc16::State::<crc16::XMODEM>::calculate(key) % SLOT_SIZE
-}
+use redis::{
+    cluster_routing::get_slot, ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value,
+};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ShardNode {
@@ -48,12 +24,14 @@ impl ShardNode {
                 insecure,
                 host: _,
                 port: _,
+                tls_params,
             } => {
                 let (host, port) = self.split();
                 ConnectionAddr::TcpTls {
                     insecure,
                     host,
                     port,
+                    tls_params,
                 }
             }
             ConnectionAddr::Unix(_) => ConnectionAddr::Unix(PathBuf::from(self.addr.as_str())),
@@ -179,7 +157,7 @@ impl Slots {
             Some(b"INFO" | b"CLIENT" | b"KEYS") => None,
             _ => cmd_iter.next(),
         };
-        if let Some(slot) = key.map(slot) {
+        if let Some(slot) = key.map(get_slot) {
             self.get_shard(slot)
         } else {
             None
@@ -193,12 +171,12 @@ impl Slots {
 
 impl FromRedisValue for Slots {
     fn from_redis_value(v: &Value) -> RedisResult<Self> {
-        if let Value::Bulk(v) = v {
+        if let Value::Array(v) = v {
             let mut id_map = HashMap::new();
             let m = v
                 .iter()
                 .filter_map(|v2| {
-                    if let Value::Bulk(v) = v2 {
+                    if let Value::Array(v) = v2 {
                         let mut iter = v.iter();
                         let _ = iter.next();
                         let n = iter
@@ -207,24 +185,26 @@ impl FromRedisValue for Slots {
                             .unwrap_or_default();
                         let mut nodes: Vec<String> = iter
                             .filter_map(|v| {
-                                if let Value::Bulk(mut v) = v.clone() {
+                                if let Value::Array(mut v) = v.clone() {
                                     v.truncate(3);
                                     let mut addrs: Vec<String> = v
                                         .into_iter()
                                         .filter_map(|x| match x {
-                                            Value::Data(d) => String::from_utf8(d).ok(),
+                                            Value::BulkString(d) => {
+                                                Some(String::from_utf8_lossy(&d).to_string())
+                                            }
+                                            Value::SimpleString(s) => Some(s),
                                             Value::Int(n) => Some(n.to_string()),
                                             _ => None,
                                         })
                                         .collect();
 
-                                    if addrs.is_empty() {
-                                        None
-                                    } else {
-                                        let id = addrs.pop().unwrap();
+                                    if let Some(id) = addrs.pop() {
                                         let addr = addrs.join(":");
                                         id_map.insert(id, ShardNode::from(addr.as_str()));
                                         Some(addr)
+                                    } else {
+                                        None
                                     }
                                 } else {
                                     None
@@ -254,20 +234,21 @@ impl FromRedisValue for Slots {
 
 #[cfg(test)]
 mod tests {
-    use crate::shards::{ShardNode, SLOT_SIZE};
-
     use super::{Shard, Slots};
+    use crate::shards::ShardNode;
     use redis::{FromRedisValue, Value};
+
+    const SLOT_SIZE: u16 = 16384;
 
     #[test]
     fn slots_parse() {
-        let cluster_slots = Value::Bulk(vec![Value::Bulk(vec![
+        let cluster_slots = Value::Array(vec![Value::Array(vec![
             Value::Int(0),
             Value::Int(2),
-            Value::Bulk(vec![
-                Value::Data(b"1.2.3.4".to_vec()),
+            Value::Array(vec![
+                Value::BulkString(b"1.2.3.4".to_vec()),
                 Value::Int(6379),
-                Value::Data(b"123456789".to_vec()),
+                Value::BulkString(b"123456789".to_vec()),
             ]),
         ])]);
         let slots = Slots::from_redis_value(&cluster_slots).expect("Slots parse error");
