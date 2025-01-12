@@ -55,7 +55,7 @@ impl Pool for ClosedPool {
 
     fn status(&self) -> HashMap<&str, redis::Value> {
         let mut result = HashMap::new();
-        result.insert("closed", redis::Value::Int(1));
+        result.insert("closed", redis::Value::Boolean(true));
         result
     }
 }
