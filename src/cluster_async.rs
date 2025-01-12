@@ -45,9 +45,9 @@ impl Pool for Cluster {
 
     fn status(&self) -> HashMap<&str, redis::Value> {
         let mut result = HashMap::new();
-        result.insert("closed", redis::Value::Int(0));
+        result.insert("closed", redis::Value::Boolean(false));
         result.insert("impl", redis::Value::SimpleString("cluster_async".into()));
-        result.insert("cluster", redis::Value::Int(1));
+        result.insert("cluster", redis::Value::Boolean(true));
         result
     }
 }

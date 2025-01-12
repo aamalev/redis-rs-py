@@ -93,7 +93,7 @@ impl PoolManager {
                     result.insert("username", redis::Value::SimpleString(username));
                 }
                 if s.redis.password.is_some() {
-                    result.insert("auth", redis::Value::Int(1));
+                    result.insert("auth", redis::Value::Boolean(true));
                 }
                 redis::Value::SimpleString(s.addr.to_string())
             })
@@ -118,5 +118,17 @@ impl PoolManager {
 
     pub async fn get_connection(&self) -> Result<Connection, error::RedisError> {
         self.pool.get_connection().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PoolManager;
+
+    #[test]
+    fn status() {
+        let pm = PoolManager::new(vec![]).unwrap();
+        let result = pm.status();
+        assert_eq!(result.len(), 3);
     }
 }
