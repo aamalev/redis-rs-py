@@ -357,24 +357,6 @@ impl ToRedisArgs for ScalarOrMap {
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum Feature {
-    Shards,
-    BB8,
-}
-
-impl TryFrom<String> for Feature {
-    type Error = String;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.to_ascii_lowercase().as_str() {
-            "shards" => Ok(Feature::Shards),
-            "bb8" => Ok(Feature::BB8),
-            _ => Err("Unknown".to_string()),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::types::Arg;

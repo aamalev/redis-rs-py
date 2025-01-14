@@ -1,23 +1,23 @@
 use std::{collections::HashMap, sync::Arc};
 
-use redis::{Cmd, ConnectionInfo, FromRedisValue, Value};
+use redis::{Cmd, FromRedisValue, Value};
 
 use crate::{
     client::Client,
     client_result_async::AsyncClientResult,
     cluster_async::Cluster,
     cluster_bb8::BB8Cluster,
+    config::Config,
     error,
     pool::{ClosedPool, Connection, Pool},
     shards_async::AsyncShards,
     single_bb8::BB8Pool,
     single_node::Node,
-    types,
 };
 
 impl From<PoolManager> for Client {
     fn from(value: PoolManager) -> Self {
-        let client_id = value.client_id.clone();
+        let client_id = value.config.client_id.clone();
         let ac = AsyncClientResult {
             cm: Arc::new(tokio::sync::RwLock::new(value)),
         };
@@ -29,51 +29,29 @@ impl From<PoolManager> for Client {
 }
 
 pub struct PoolManager {
-    pub(crate) is_cluster: Option<bool>,
-    pub(crate) initial_nodes: Vec<ConnectionInfo>,
-    pub(crate) max_size: u32,
     pub(crate) pool: Box<dyn Pool + Send + Sync>,
-    pub(crate) client_id: String,
-    pub(crate) features: Vec<types::Feature>,
+    pub(crate) config: Config,
 }
 
 impl PoolManager {
-    pub fn new(initial_nodes: Vec<ConnectionInfo>) -> Result<Self, error::RedisError> {
+    pub fn new(config: Config) -> Result<Self, error::RedisError> {
         Ok(Self {
-            initial_nodes,
-            is_cluster: Some(false),
-            max_size: 10,
             pool: Box::new(ClosedPool),
-            client_id: String::default(),
-            features: vec![],
+            config,
         })
     }
 
     pub async fn init(&mut self) -> Result<&Self, error::RedisError> {
-        let mut nodes = self.initial_nodes.clone();
-        let ms = self.max_size;
-        match self.is_cluster {
-            None => {
-                self.pool = Box::new(AsyncShards::new(nodes, ms, self.is_cluster).await?);
+        let mut nodes = self.config.initial_nodes.clone();
+        let ms = self.config.max_size;
+        self.pool = match (self.config.cluster, self.config.shards, self.config.bb8) {
+            (None, _, _) | (_, true, _) => Box::new(AsyncShards::new(self.config.clone()).await?),
+            (Some(true), false, false) => Box::new(Cluster::new(nodes, ms).await?),
+            (Some(false), false, false) => {
+                Box::new(Node::new(nodes.remove(0), self.config.clone()).await?)
             }
-            Some(true) => {
-                self.pool = match self.features.as_slice() {
-                    [types::Feature::BB8, ..] => Box::new(BB8Cluster::new(nodes, ms).await),
-                    [types::Feature::Shards, ..] => {
-                        Box::new(AsyncShards::new(nodes, ms, Some(true)).await?)
-                    }
-                    _ => Box::new(Cluster::new(nodes, ms).await?),
-                };
-            }
-            Some(false) => {
-                self.pool = match self.features.as_slice() {
-                    [types::Feature::BB8, ..] => Box::new(BB8Pool::new(nodes.remove(0), ms).await?),
-                    [types::Feature::Shards, ..] => {
-                        Box::new(AsyncShards::new(nodes, ms, Some(false)).await?)
-                    }
-                    _ => Box::new(Node::new(nodes.remove(0), ms).await?),
-                };
-            }
+            (Some(true), false, true) => Box::new(BB8Cluster::new(nodes, ms).await),
+            (Some(false), false, true) => Box::new(BB8Pool::new(nodes.remove(0), ms).await?),
         };
         Ok(self)
     }
@@ -86,6 +64,7 @@ impl PoolManager {
     pub fn status(&self) -> HashMap<String, redis::Value> {
         let mut result = self.pool.status();
         let initial_nodes = self
+            .config
             .initial_nodes
             .iter()
             .map(|s| {
@@ -99,7 +78,7 @@ impl PoolManager {
             })
             .collect();
         result.insert("initial_nodes", redis::Value::Array(initial_nodes));
-        result.insert("max_size", redis::Value::Int(self.max_size as i64));
+        result.insert("max_size", redis::Value::Int(self.config.max_size as i64));
         result
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
@@ -123,11 +102,13 @@ impl PoolManager {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::Config;
+
     use super::PoolManager;
 
     #[test]
     fn status() {
-        let pm = PoolManager::new(vec![]).unwrap();
+        let pm = PoolManager::new(Config::default()).unwrap();
         let result = pm.status();
         assert_eq!(result.len(), 3);
     }

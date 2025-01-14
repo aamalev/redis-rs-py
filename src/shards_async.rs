@@ -7,6 +7,7 @@ use redis::{
 use tokio::sync::RwLock;
 
 use crate::{
+    config::Config,
     error,
     pool::{Connection, Pool},
     shards::Slots,
@@ -18,25 +19,19 @@ type Node = crate::single_node::Node;
 pub struct AsyncShards {
     slots: Arc<RwLock<Slots>>,
     nodes: Arc<RwLock<HashMap<String, Node>>>,
-    max_size: u32,
+    config: Config,
     is_cluster: bool,
 }
 
 impl AsyncShards {
-    pub async fn new<T>(
-        nodes: Vec<T>,
-        max_size: u32,
-        is_cluster: Option<bool>,
-    ) -> RedisResult<AsyncShards>
-    where
-        T: IntoConnectionInfo,
-    {
+    pub async fn new(config: Config) -> RedisResult<AsyncShards> {
+        let is_cluster = config.cluster;
+        let init_nodes = config.initial_nodes.clone();
         let mut result = Self {
-            max_size,
+            config,
             ..Default::default()
         };
-        for node_addr in nodes.into_iter() {
-            let info = node_addr.into_connection_info()?;
+        for info in init_nodes.clone().into_iter() {
             let node = result.create_node(info.clone()).await?;
             result
                 .nodes
@@ -53,7 +48,7 @@ impl AsyncShards {
     }
 
     async fn create_node(&self, info: ConnectionInfo) -> Result<Node, error::RedisError> {
-        Node::new(info, self.max_size).await
+        Node::new(info, self.config.clone()).await
     }
 
     async fn init_cluster(&self) -> Result<bool, error::RedisError> {
