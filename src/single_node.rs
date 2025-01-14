@@ -1,33 +1,34 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use redis::{
-    aio::{ConnectionLike, MultiplexedConnection},
+    aio::{ConnectionLike, ConnectionManager, ConnectionManagerConfig},
     Client, Cmd, ConnectionInfo,
 };
-use tokio::sync::Semaphore;
 
 use crate::{
+    config::Config,
     error,
     pool::{Connection, Pool},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Node {
     pub info: ConnectionInfo,
-    connection: MultiplexedConnection,
-    semaphore: Arc<Semaphore>,
+    manager: ConnectionManager,
     pub id: Option<String>,
 }
 
 impl Node {
-    pub async fn new(info: ConnectionInfo, max_size: u32) -> Result<Self, error::RedisError> {
+    pub async fn new(info: ConnectionInfo, config: Config) -> Result<Self, error::RedisError> {
         let client = Client::open(info.clone())?;
-        let semaphore = Arc::new(Semaphore::new(max_size as usize));
-        let connection = client.get_multiplexed_async_connection().await?;
+        let mut cfg = ConnectionManagerConfig::new();
+        if let Some(max_delay) = config.max_delay {
+            cfg = cfg.set_max_delay(max_delay);
+        }
+        let manager = ConnectionManager::new_with_config(client, cfg).await?;
         Ok(Self {
-            connection,
-            semaphore,
+            manager,
             info,
             id: None,
         })
@@ -37,22 +38,12 @@ impl Node {
 #[async_trait]
 impl Pool for Node {
     async fn get_connection(&self) -> Result<Connection, error::RedisError> {
-        let _ = self
-            .semaphore
-            .acquire()
-            .await
-            .map_err(error::RedisError::from)?;
-        let c = self.connection.clone();
+        let c = self.manager.clone();
         Ok(Connection { c: Box::new(c) })
     }
 
     async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
-        let _ = self
-            .semaphore
-            .acquire()
-            .await
-            .map_err(error::RedisError::from)?;
-        let mut c = self.connection.clone();
+        let mut c = self.manager.clone();
         let value = c.req_packed_command(&cmd).await?;
         Ok(value)
     }
@@ -71,15 +62,7 @@ impl ConnectionLike for Node {
         &'a mut self,
         cmd: &'a redis::Cmd,
     ) -> redis::RedisFuture<'a, redis::Value> {
-        Box::pin(async move {
-            let _ = self
-                .semaphore
-                .acquire()
-                .await
-                .map_err(error::RedisError::from)?;
-            let mut c = self.connection.clone();
-            c.req_packed_command(cmd).await
-        })
+        self.manager.req_packed_command(cmd)
     }
 
     fn req_packed_commands<'a>(
@@ -88,18 +71,10 @@ impl ConnectionLike for Node {
         offset: usize,
         count: usize,
     ) -> redis::RedisFuture<'a, Vec<redis::Value>> {
-        Box::pin(async move {
-            let _ = self
-                .semaphore
-                .acquire()
-                .await
-                .map_err(error::RedisError::from)?;
-            let mut c = self.connection.clone();
-            c.req_packed_commands(cmd, offset, count).await
-        })
+        self.manager.req_packed_commands(cmd, offset, count)
     }
 
     fn get_db(&self) -> i64 {
-        self.connection.get_db()
+        self.manager.get_db()
     }
 }

@@ -1,3 +1,4 @@
+use config::Config;
 use pyo3::prelude::*;
 use redis::IntoConnectionInfo;
 mod client;
@@ -5,6 +6,7 @@ mod client_result;
 mod client_result_async;
 mod cluster_async;
 mod cluster_bb8;
+mod config;
 mod error;
 mod exceptions;
 mod pool;
@@ -24,6 +26,7 @@ mod types;
     password = None,
     db = None,
     client_id=None,
+    max_delay=None,
     features=None,
 ))]
 #[allow(clippy::too_many_arguments)]
@@ -35,6 +38,7 @@ fn create_client(
     password: Option<String>,
     db: Option<i64>,
     client_id: Option<String>,
+    max_delay: Option<u64>,
     features: Option<Vec<String>>,
 ) -> PyResult<client::Client> {
     let mut nodes = initial_nodes.clone();
@@ -56,22 +60,20 @@ fn create_client(
         infos.push(info);
     }
 
-    let mut cm = pool_manager::PoolManager::new(infos)?;
-    cm.is_cluster = cluster;
+    let mut cfg = Config {
+        initial_nodes: infos,
+        max_size: max_size.unwrap_or(10),
+        cluster,
+        client_id: client_id.unwrap_or_default(),
+        max_delay,
+        ..Default::default()
+    };
 
-    if let Some(features) = features {
-        cm.features = features
-            .into_iter()
-            .filter_map(|x| types::Feature::try_from(x).ok())
-            .collect();
-        cm.features.sort();
+    if let Some(ref features) = features {
+        cfg.set_features(features);
     }
-    if let Some(size) = max_size {
-        cm.max_size = size;
-    }
-    if let Some(client_id) = client_id {
-        cm.client_id = client_id;
-    }
+
+    let cm = pool_manager::PoolManager::new(cfg)?;
     Ok(cm.into())
 }
 
