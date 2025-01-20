@@ -23,6 +23,7 @@ def create_client(
     db: Optional[int] = None,
     client_id: Optional[str] = None,
     features: Optional[List[str]] = None,
+    max_delay_ms: Optional[int] = None,
 ) -> Client:
     if not client_id:
         client_id = f"{socket.gethostname()}-{uuid4()}"
@@ -35,4 +36,5 @@ def create_client(
         db=db,
         client_id=client_id,
         features=features,
+        max_delay=max_delay_ms,
     )
