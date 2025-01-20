@@ -27,4 +27,5 @@ def create_client(
     db: Optional[int] = None,
     client_id: Optional[str] = None,
     features: Optional[List[str]] = None,
+    max_delay_ms: Optional[int] = None,
 ) -> Client: ...
