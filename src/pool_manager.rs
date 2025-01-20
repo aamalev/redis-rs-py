@@ -21,10 +21,7 @@ impl From<PoolManager> for Client {
         let ac = AsyncClientResult {
             cm: Arc::new(tokio::sync::RwLock::new(value)),
         };
-        Self {
-            cr: Box::new(ac),
-            client_id,
-        }
+        Self { cr: ac, client_id }
     }
 }
 
