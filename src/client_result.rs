@@ -5,6 +5,7 @@ use redis::{Cmd, Value};
 
 use crate::{client_async::Client, error, types};
 
+#[allow(dead_code)]
 pub trait ClientResult {
     fn init<'a>(&self, py: Python<'a>, client: &Client) -> PyResult<&'a PyAny>;
     fn close<'a>(
