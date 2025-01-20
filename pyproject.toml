@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=0.14,<0.15", "hatchling"]
+requires = ["maturin>=1.7,<2.0", "hatchling"]
 build-backend = "maturin"
 
 [project]
@@ -84,6 +84,8 @@ testpaths = [
     "redis_rs",
     "tests",
 ]
+asyncio_default_fixture_loop_scope = "function"
+
 
 [tool.hatch.version]
 path = "Cargo.toml"
@@ -101,14 +103,14 @@ build = [
     "maturin develop",
 ]
 check = [
-    "ruff redis_rs tests",
+    "ruff check redis_rs tests",
     "ruff format --check redis_rs tests",
     "mypy redis_rs tests",
     "cargo clippy",
 ]
 fmt = [
     "cargo fmt",
-    "ruff --fix redis_rs tests",
+    "ruff check --fix redis_rs tests",
     "ruff format redis_rs tests",
 ]
 test = [
