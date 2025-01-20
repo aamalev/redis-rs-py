@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use pyo3::{
-    types::{PyBytes, PyDict, PyList, PySet},
-    FromPyObject, PyObject, PyResult, Python, ToPyObject,
+    prelude::*,
+    types::{PyBytes, PyDict, PyDictMethods, PyList, PySet, PySetMethods},
+    FromPyObject, IntoPyObjectExt, PyAny, PyObject, PyResult, Python,
 };
 use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
 
@@ -38,8 +39,8 @@ impl From<Option<String>> for Codec {
     }
 }
 
-impl From<Option<&PyDict>> for Codec {
-    fn from(kwargs: Option<&PyDict>) -> Self {
+impl From<Option<&Bound<'_, PyDict>>> for Codec {
+    fn from(kwargs: Option<&Bound<'_, PyDict>>) -> Self {
         kwargs
             .map(|kw| {
                 kw.get_item("encoding")
@@ -55,9 +56,13 @@ impl From<Option<&PyDict>> for Codec {
 
 fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::ValueError> {
     match codec {
-        Codec::String => Ok(String::from_utf8_lossy(&v).to_object(py)),
-        Codec::Float => Ok(String::from_utf8_lossy(&v).parse::<f64>()?.to_object(py)),
-        Codec::Int => Ok(String::from_utf8_lossy(&v).parse::<i64>()?.to_object(py)),
+        Codec::String => Ok(String::from_utf8_lossy(&v).into_py_any(py)?),
+        Codec::Float => Ok(String::from_utf8_lossy(&v)
+            .parse::<f64>()?
+            .into_py_any(py)?),
+        Codec::Int => Ok(String::from_utf8_lossy(&v)
+            .parse::<i64>()?
+            .into_py_any(py)?),
         Codec::Info => {
             let result = PyDict::new(py);
             for (key, value) in String::from_utf8_lossy(&v)
@@ -74,9 +79,9 @@ fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::Valu
                     result.set_item(key, value)?;
                 }
             }
-            Ok(result.to_object(py))
+            Ok(result.into_py_any(py)?)
         }
-        Codec::Bytes => Ok(PyBytes::new(py, &v).to_object(py)),
+        Codec::Bytes => Ok(PyBytes::new(py, &v).into_py_any(py)?),
         Codec::Json => {
             let v: serde_json::Value =
                 serde_json::from_slice(&v).map_err(error::ValueError::from)?;
@@ -88,30 +93,30 @@ fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::Valu
 fn from_json(py: Python<'_>, v: serde_json::Value) -> Result<PyObject, error::ValueError> {
     Ok(match v {
         serde_json::Value::Null => py.None(),
-        serde_json::Value::Bool(b) => b.to_object(py),
+        serde_json::Value::Bool(b) => b.into_py_any(py)?,
         serde_json::Value::Number(n) => {
             if n.is_f64() {
-                n.as_f64().to_object(py)
+                n.as_f64().into_py_any(py)?
             } else if n.is_i64() {
-                n.as_i64().to_object(py)
+                n.as_i64().into_py_any(py)?
             } else {
-                n.as_u64().to_object(py)
+                n.as_u64().into_py_any(py)?
             }
         }
-        serde_json::Value::String(s) => s.to_object(py),
+        serde_json::Value::String(s) => s.into_py_any(py)?,
         serde_json::Value::Array(a) => {
             let mut result = vec![];
             for v in a.into_iter() {
                 result.push(from_json(py, v)?);
             }
-            PyList::new(py, result).to_object(py)
+            PyList::new(py, result)?.into_any().unbind()
         }
         serde_json::Value::Object(m) => {
             let result = PyDict::new(py);
             for (k, v) in m.into_iter() {
                 result.set_item(k, from_json(py, v)?)?;
             }
-            result.to_object(py)
+            result.into_py_any(py)?
         }
     })
 }
@@ -128,14 +133,14 @@ fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyResult<PyObject> {
     let result = match value {
         Value::BulkString(v) => decode(py, v, codec),
         Value::Nil => py.None(),
-        Value::Int(i) => i.to_object(py),
+        Value::Int(i) => i.into_py_any(py)?,
         Value::Array(_) => to_dict(py, value, codec)?,
-        Value::SimpleString(s) => s.to_object(py),
-        Value::Okay => true.to_object(py),
+        Value::SimpleString(s) => s.into_py_any(py)?,
+        Value::Okay => true.into_py_any(py)?,
         Value::Map(_) => to_dict(py, value, codec)?,
         Value::Set(_) => to_object(py, value, codec)?,
-        Value::Double(f) => f.to_object(py),
-        Value::Boolean(b) => b.to_object(py),
+        Value::Double(f) => f.into_py_any(py)?,
+        Value::Boolean(b) => b.into_py_any(py)?,
         Value::Attribute {
             data: _,
             attributes: _,
@@ -175,34 +180,34 @@ pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<PyObject> {
                 }
             }
         }
-        Ok(result.to_object(py))
+        Ok(result.into_py_any(py)?)
     }
 }
 
-pub fn to_object(py: Python, value: Value, codec: Codec) -> PyResult<PyObject> {
+pub fn to_object(py: Python, value: Value, codec: Codec) -> PyResult<Py<PyAny>> {
     let result = match value {
         Value::BulkString(v) => decode(py, v, codec),
         Value::Nil => py.None(),
-        Value::Int(i) => i.to_object(py),
+        Value::Int(i) => i.into_py_any(py)?,
         Value::Array(bulk) => {
             let mut result = vec![];
             for v in bulk.into_iter() {
                 result.push(to_object(py, v, codec.clone())?);
             }
-            PyList::new(py, result).to_object(py)
+            PyList::new(py, result)?.into_py_any(py)?
         }
-        Value::SimpleString(s) => s.to_object(py),
-        Value::Okay => true.to_object(py),
+        Value::SimpleString(s) => s.into_py_any(py)?,
+        Value::Okay => true.into_py_any(py)?,
         Value::Map(_) => to_dict(py, value, codec)?,
         Value::Set(s) => {
             let result = PySet::empty(py)?;
             for v in s.into_iter() {
                 let _ = result.add(to_object(py, v, codec.clone())?);
             }
-            result.to_object(py)
+            result.into_py_any(py)?
         }
-        Value::Double(f) => f.to_object(py),
-        Value::Boolean(b) => b.to_object(py),
+        Value::Double(f) => f.into_py_any(py)?,
+        Value::Boolean(b) => b.into_py_any(py)?,
         Value::Attribute {
             data: _,
             attributes: _,

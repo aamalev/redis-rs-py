@@ -1,185 +1,154 @@
-use crate::{client_result::ClientResult, types};
-use pyo3::{prelude::*, types::PyDict};
+use crate::{client_result_async::AsyncClientResult, types};
+use pyo3::prelude::*;
 use redis::streams::StreamReadOptions;
 use std::{collections::HashMap, num::NonZeroUsize};
 
 #[pyclass]
+#[derive(Clone)]
 pub struct Client {
-    pub(crate) cr: Box<dyn ClientResult + Send>,
+    pub(crate) cr: AsyncClientResult,
     #[pyo3(get)]
     pub client_id: String,
 }
 
 #[pymethods]
 impl Client {
-    fn __aenter__<'a>(&self, py: Python<'a>) -> PyResult<&'a PyAny> {
-        self.cr.init(py, self)
+    async fn __aenter__(&self) -> PyResult<Self> {
+        self.cr.init(self).await
     }
 
-    fn __aexit__<'a>(
+    async fn __aexit__(
         &self,
-        py: Python<'a>,
-        exc_type: &PyAny,
-        exc_value: &PyAny,
-        traceback: &PyAny,
-    ) -> PyResult<&'a PyAny> {
-        self.cr.close(py, exc_type, exc_value, traceback)
+        _exc_type: PyObject,
+        _exc_value: PyObject,
+        _traceback: PyObject,
+    ) -> PyResult<()> {
+        self.cr.close().await
     }
 
-    fn status(&self, py: Python) -> PyResult<PyObject> {
+    fn status(&self, py: Python) -> PyResult<HashMap<String, PyObject>> {
         let status = self.cr.status()?;
-        let result = PyDict::new(py);
+        let mut result = HashMap::new();
         for (k, v) in status.into_iter() {
             let value = types::to_object(py, v, types::Codec::String)?;
-            result.set_item(k, value)?;
+            result.insert(k, value);
         }
-        Ok(result.to_object(py))
+        Ok(result)
     }
 
-    #[pyo3(signature = (cmd, *args, **kwargs))]
-    fn execute<'a>(
+    #[pyo3(signature = (cmd, *args, encoding = None))]
+    async fn execute(
         &self,
-        py: Python<'a>,
         cmd: types::Str,
         args: Vec<types::Arg>,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        let encoding = types::Codec::from(kwargs);
-        self.cr.execute(py, cmd, encoding)
-    }
-
-    #[pyo3(signature = (cmd, *args))]
-    fn fetch_str<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Str,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
-        let cmd = String::from(cmd).to_ascii_uppercase();
-        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        self.cr.fetch_str(py, cmd)
+        let encoding = types::Codec::from(encoding);
+        self.cr.execute(cmd, encoding).await
     }
 
     #[pyo3(signature = (cmd, *args))]
-    fn fetch_bytes<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Str,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn fetch_str(&self, cmd: types::Str, args: Vec<types::Arg>) -> PyResult<Option<String>> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        self.cr.fetch_bytes(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (cmd, *args))]
-    fn fetch_list<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Str,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn fetch_bytes(&self, cmd: types::Str, args: Vec<types::Arg>) -> PyResult<Vec<u8>> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        self.cr.fetch_list(py, cmd)
-    }
-
-    #[pyo3(signature = (cmd, *args, **kwargs))]
-    fn fetch_dict<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Str,
-        args: Vec<types::Arg>,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let cmd = String::from(cmd).to_ascii_uppercase();
-        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        let encoding = types::Codec::from(kwargs);
-        self.cr.fetch_dict(py, cmd, encoding)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (cmd, *args))]
-    fn fetch_scores<'a>(
-        &self,
-        py: Python<'a>,
-        cmd: types::Str,
-        args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn fetch_list(&self, cmd: types::Str, args: Vec<types::Arg>) -> PyResult<Vec<String>> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        self.cr.fetch_scores(py, cmd)
+        self.cr.fetch(cmd).await
+    }
+
+    #[pyo3(signature = (cmd, *args, encoding = None))]
+    async fn fetch_dict(
+        &self,
+        cmd: types::Str,
+        args: Vec<types::Arg>,
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
+        let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
+        let encoding = types::Codec::from(encoding);
+        self.cr.fetch_dict(cmd, encoding).await
     }
 
     #[pyo3(signature = (cmd, *args))]
-    fn fetch_int<'a>(
+    async fn fetch_scores(
         &self,
-        py: Python<'a>,
         cmd: types::Str,
         args: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    ) -> PyResult<HashMap<String, f64>> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
+    }
+
+    #[pyo3(signature = (cmd, *args))]
+    async fn fetch_int(&self, cmd: types::Str, args: Vec<types::Arg>) -> PyResult<i64> {
+        let cmd = String::from(cmd).to_ascii_uppercase();
+        let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (*keys))]
-    fn exists<'a>(&self, py: Python<'a>, keys: Vec<types::Str>) -> PyResult<&'a PyAny> {
+    async fn exists(&self, keys: Vec<types::Str>) -> PyResult<bool> {
         let cmd = redis::cmd("EXISTS").arg(keys).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, seconds, option = None))]
-    fn expire<'a>(
+    async fn expire(
         &self,
-        py: Python<'a>,
         key: types::Str,
         seconds: u64,
         option: Option<types::Str>,
-    ) -> PyResult<&'a PyAny> {
+    ) -> PyResult<bool> {
         let cmd = redis::cmd("EXPIRE")
             .arg(key)
             .arg(seconds)
             .arg(option)
             .to_owned();
-        self.cr.fetch_bool(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (*keys))]
-    fn delete<'a>(&self, py: Python<'a>, keys: Vec<types::Str>) -> PyResult<&'a PyAny> {
+    async fn delete(&self, keys: Vec<types::Str>) -> PyResult<i64> {
         let cmd = redis::cmd("DEL").arg(keys).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
-    #[pyo3(signature = (pattern, encoding = None))]
-    fn keys<'a>(
-        &self,
-        py: Python<'a>,
-        pattern: types::Arg,
-        encoding: Option<String>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(encoding);
+    #[pyo3(signature = (pattern))]
+    async fn keys(&self, pattern: types::Str) -> PyResult<Vec<String>> {
         let cmd = redis::cmd("KEYS").arg(pattern).to_owned();
-        self.cr.execute(py, cmd, encoding)
+        self.cr.fetch(cmd).await
     }
 
-    #[pyo3(signature = (script, numkeys, *args, **kwargs))]
-    fn eval<'a>(
+    #[pyo3(signature = (script, numkeys, *args, encoding = None))]
+    async fn eval(
         &self,
-        py: Python<'a>,
         script: types::Str,
         numkeys: u8,
         args: Vec<types::Arg>,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
         let cmd = redis::cmd("EVAL")
             .arg(script)
             .arg(numkeys)
             .arg(args)
             .to_owned();
-        let encoding = types::Codec::from(kwargs);
-        self.cr.execute(py, cmd, encoding)
+        let encoding = types::Codec::from(encoding);
+        self.cr.execute(cmd, encoding).await
     }
 
     #[pyo3(signature = (
@@ -187,17 +156,17 @@ impl Client {
         value,
         ex = None,
         px = None,
-        **kwargs,
+        *,
+        encoding = None,
     ))]
-    fn set<'a>(
+    async fn set(
         &self,
-        py: Python<'a>,
         key: types::Str,
         value: types::Arg,
         ex: Option<usize>,
         px: Option<usize>,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
         let mut cmd = redis::cmd("SET").arg(key).arg(value).to_owned();
         if let Some(ex) = ex {
             cmd.arg(b"EX");
@@ -207,220 +176,173 @@ impl Client {
             cmd.arg(b"PX");
             cmd.arg(px);
         }
-        let encoding = types::Codec::from(kwargs);
-        self.cr.execute(py, cmd, encoding)
+        let encoding = types::Codec::from(encoding);
+        self.cr.execute(cmd, encoding).await
     }
 
-    #[pyo3(signature = (key, **kwargs))]
-    fn get<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(kwargs);
+    #[pyo3(signature = (key, *, encoding = None))]
+    async fn get(&self, key: types::Str, encoding: Option<String>) -> PyResult<PyObject> {
+        let encoding = types::Codec::from(encoding);
         let cmd = redis::cmd("GET").arg(key).to_owned();
-        self.cr.execute(py, cmd, encoding)
+        self.cr.execute(cmd, encoding).await
     }
 
     #[pyo3(signature = (key, *pairs, mapping = None))]
-    fn hset<'a>(
+    async fn hset(
         &self,
-        py: Python<'a>,
         key: types::Str,
         pairs: Vec<types::ScalarOrMap>,
         mapping: Option<types::ScalarOrMap>,
-    ) -> PyResult<&'a PyAny> {
+    ) -> PyResult<i64> {
         let cmd = redis::cmd("HSET")
             .arg(key)
             .arg(pairs)
             .arg(mapping)
             .to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
-    #[pyo3(signature = (key, field, **kwargs))]
-    fn hget<'a>(
+    #[pyo3(signature = (key, field, *, encoding = None))]
+    async fn hget(
         &self,
-        py: Python<'a>,
         key: types::Str,
         field: types::Str,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(kwargs);
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
+        let encoding = types::Codec::from(encoding);
         let cmd = redis::cmd("HGET").arg(key).arg(field).to_owned();
-        self.cr.execute(py, cmd, encoding)
+        self.cr.execute(cmd, encoding).await
     }
 
-    #[pyo3(signature = (key, *fields, **kwargs))]
-    fn hmget<'a>(
+    #[pyo3(signature = (key, *fields, encoding = None))]
+    async fn hmget(
         &self,
-        py: Python<'a>,
         key: types::Str,
         fields: Vec<types::Str>,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(kwargs);
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
+        let encoding = types::Codec::from(encoding);
         let cmd = redis::cmd("HMGET").arg(key).arg(fields).to_owned();
-        self.cr.execute(py, cmd, encoding)
+        self.cr.execute(cmd, encoding).await
     }
 
-    #[pyo3(signature = (key, **kwargs))]
-    fn hgetall<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(kwargs);
+    #[pyo3(signature = (key, *, encoding = None))]
+    async fn hgetall(&self, key: types::Str, encoding: Option<String>) -> PyResult<PyObject> {
+        let encoding = types::Codec::from(encoding);
         let cmd = redis::cmd("HGETALL").arg(key).to_owned();
-        self.cr.fetch_dict(py, cmd, encoding)
+        self.cr.fetch_dict(cmd, encoding).await
     }
 
     #[pyo3(signature = (key, field))]
-    fn hexists<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        field: types::Arg,
-    ) -> PyResult<&'a PyAny> {
+    async fn hexists(&self, key: types::Str, field: types::Arg) -> PyResult<bool> {
         let cmd = redis::cmd("HEXISTS").arg(key).arg(field).to_owned();
-        self.cr.fetch_bool(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, *fields))]
-    fn hdel<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        fields: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn hdel(&self, key: types::Str, fields: Vec<types::Arg>) -> PyResult<i64> {
         let cmd = redis::cmd("HDEL").arg(key).arg(fields).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, increment = None))]
-    fn incr<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        increment: Option<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn incr(&self, key: types::Str, increment: Option<types::Arg>) -> PyResult<f64> {
         let cmd = match increment {
             None => redis::cmd("INCR").arg(key).to_owned(),
             Some(types::Arg::Int(i)) => redis::cmd("INCRBY").arg(key).arg(i).to_owned(),
             Some(arg) => redis::cmd("INCRBYFLOAT").arg(key).arg(arg).to_owned(),
         };
-        self.cr.fetch_float(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, value))]
-    fn lpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
+    async fn lpush(&self, key: types::Str, value: types::Arg) -> PyResult<i64> {
         let cmd = redis::cmd("LPUSH").arg(key).arg(value).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, value))]
-    fn rpush<'a>(&self, py: Python<'a>, key: types::Str, value: types::Arg) -> PyResult<&'a PyAny> {
+    async fn rpush(&self, key: types::Str, value: types::Arg) -> PyResult<i64> {
         let cmd = redis::cmd("RPUSH").arg(key).arg(value).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
-    #[pyo3(signature = (key, count = None, **kwargs))]
-    fn lpop<'a>(
+    #[pyo3(signature = (key, count = None, *, encoding = None))]
+    async fn lpop(
         &self,
-        py: Python<'a>,
         key: types::Str,
         count: Option<NonZeroUsize>,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(kwargs);
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
+        let encoding = types::Codec::from(encoding);
         let cmd = redis::cmd("LPOP").arg(key).arg(count).to_owned();
-        self.cr.execute(py, cmd, encoding)
+        self.cr.execute(cmd, encoding).await
     }
 
-    #[pyo3(signature = (*keys, timeout, **kwargs))]
-    fn blpop<'a>(
+    #[pyo3(signature = (*keys, timeout, encoding = None))]
+    async fn blpop(
         &self,
-        py: Python<'a>,
         keys: Vec<types::Str>,
         timeout: types::Arg,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(kwargs);
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
+        let encoding = types::Codec::from(encoding);
         let cmd = redis::cmd("BLPOP").arg(keys).arg(timeout).to_owned();
-        self.cr.execute(py, cmd, encoding)
+        self.cr.execute(cmd, encoding).await
     }
 
     #[pyo3(signature = (key, count, element))]
-    fn lrem<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        count: isize,
-        element: types::Arg,
-    ) -> PyResult<&'a PyAny> {
+    async fn lrem(&self, key: types::Str, count: isize, element: types::Arg) -> PyResult<i64> {
         let cmd = redis::cmd("LREM")
             .arg(key)
             .arg(count)
             .arg(element)
             .to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
-    #[pyo3(signature = (key, start = 0, stop = -1, **kwargs))]
-    fn lrange<'a>(
+    #[pyo3(signature = (key, start = 0, stop = -1, *, encoding = None))]
+    async fn lrange(
         &self,
-        py: Python<'a>,
         key: types::Str,
         start: isize,
         stop: isize,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<&'a PyAny> {
-        let encoding = types::Codec::from(kwargs);
+        encoding: Option<String>,
+    ) -> PyResult<PyObject> {
+        let encoding = types::Codec::from(encoding);
         let cmd = redis::cmd("LRANGE")
             .arg(key)
             .arg(start)
             .arg(stop)
             .to_owned();
-        self.cr.execute(py, cmd, encoding)
+        self.cr.execute(cmd, encoding).await
     }
 
     #[pyo3(signature = (key))]
-    fn llen<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny> {
+    async fn llen(&self, key: types::Str) -> PyResult<i64> {
         let cmd = redis::cmd("LLEN").arg(key).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, *elements))]
-    fn pfadd<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        elements: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn pfadd(&self, key: types::Str, elements: Vec<types::Arg>) -> PyResult<bool> {
         let cmd = redis::cmd("PFADD").arg(key).arg(elements).to_owned();
-        self.cr.fetch_bool(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (*keys))]
-    fn pfcount<'a>(&self, py: Python<'a>, keys: Vec<types::Arg>) -> PyResult<&'a PyAny> {
+    async fn pfcount(&self, keys: Vec<types::Arg>) -> PyResult<i64> {
         let cmd = redis::cmd("PFCOUNT").arg(keys).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (destkey, *sourcekeys))]
-    fn pfmerge<'a>(
-        &self,
-        py: Python<'a>,
-        destkey: types::Str,
-        sourcekeys: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn pfmerge(&self, destkey: types::Str, sourcekeys: Vec<types::Arg>) -> PyResult<bool> {
         let cmd = redis::cmd("PFMERGE")
             .arg(destkey)
             .arg(sourcekeys)
             .to_owned();
-        self.cr.fetch_bool(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -434,9 +356,8 @@ impl Client {
         approx = true,
         limit = None,
     ))]
-    fn xadd<'a>(
+    async fn xadd(
         &self,
-        py: Python<'a>,
         stream: types::Str,
         mut args: Vec<types::ScalarOrMap>,
         id: Option<types::Str>,
@@ -446,7 +367,7 @@ impl Client {
         minid: Option<usize>,
         approx: bool,
         limit: Option<usize>,
-    ) -> PyResult<&'a PyAny> {
+    ) -> PyResult<Option<String>> {
         let mut cmd = redis::cmd("XADD").arg(stream).to_owned();
 
         if !mkstream {
@@ -494,14 +415,13 @@ impl Client {
 
         cmd.arg(args).arg(items);
 
-        self.cr.fetch_str(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (streams, *args, id=None, block=None, count=None, noack=None, group=None, encoding=None))]
-    fn xread<'a>(
+    async fn xread(
         &self,
-        py: Python<'a>,
         streams: types::ScalarOrMap,
         args: Vec<types::Str>,
         id: Option<types::Arg>,
@@ -510,7 +430,7 @@ impl Client {
         noack: Option<bool>,
         group: Option<types::Str>,
         encoding: Option<String>,
-    ) -> PyResult<&'a PyAny> {
+    ) -> PyResult<PyObject> {
         let encoding = types::Codec::from(encoding);
         let mut id = id.unwrap_or(types::Arg::Int(0));
         let mut options = StreamReadOptions::default();
@@ -555,31 +475,24 @@ impl Client {
             }
         }
         cmd.arg(options).arg("STREAMS").arg(keys).arg(ids);
-        self.cr.fetch_dict(py, cmd, encoding)
+        self.cr.fetch_dict(cmd, encoding).await
     }
 
     #[pyo3(signature = (key, group, *id))]
-    fn xack<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        group: types::Str,
-        id: Vec<types::Str>,
-    ) -> PyResult<&'a PyAny> {
+    async fn xack(&self, key: types::Str, group: types::Str, id: Vec<types::Str>) -> PyResult<i64> {
         let cmd = redis::cmd("XACK").arg(key).arg(group).arg(id).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, *values, score = None, incr = None, encoding = None))]
-    fn zadd<'a>(
+    async fn zadd(
         &self,
-        py: Python<'a>,
         key: types::Str,
         values: Vec<types::ScalarOrMap>,
         score: Option<f64>,
         incr: Option<f64>,
         encoding: Option<String>,
-    ) -> PyResult<&'a PyAny> {
+    ) -> PyResult<PyObject> {
         let encoding = types::Codec::from(encoding);
         let mut cmd = redis::cmd("ZADD").arg(key).to_owned();
         if let Some(incr) = incr {
@@ -588,7 +501,7 @@ impl Client {
             cmd.arg(score);
         }
         let cmd = values.into_iter().fold(cmd, |c, som| som.write_val_key(c));
-        self.cr.execute(py, cmd, encoding)
+        self.cr.execute(cmd, encoding).await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -600,16 +513,15 @@ impl Client {
         withscores = false,
         encoding = None,
     ))]
-    fn zrange<'a>(
+    async fn zrange(
         &self,
-        py: Python<'a>,
         key: types::Str,
         start: types::Arg,
         stop: types::Arg,
         args: Vec<types::Arg>,
         withscores: bool,
         encoding: Option<String>,
-    ) -> PyResult<&'a PyAny> {
+    ) -> PyResult<PyObject> {
         let mut cmd = redis::cmd("ZRANGE")
             .arg(key)
             .arg(start)
@@ -618,27 +530,39 @@ impl Client {
             .to_owned();
         if withscores {
             cmd.arg(b"WITHSCORES");
-            self.cr.fetch_dict(py, cmd, types::Codec::Float)
+            self.cr.fetch_dict(cmd, types::Codec::Float).await
         } else {
             let encoding = types::Codec::from(encoding);
-            self.cr.execute(py, cmd, encoding)
+            self.cr.execute(cmd, encoding).await
         }
     }
 
     #[pyo3(signature = (key))]
-    fn zcard<'a>(&self, py: Python<'a>, key: types::Str) -> PyResult<&'a PyAny> {
+    async fn zcard(&self, key: types::Str) -> PyResult<i64> {
         let cmd = redis::cmd("ZCARD").arg(key).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
     }
 
     #[pyo3(signature = (key, *members))]
-    fn zrem<'a>(
-        &self,
-        py: Python<'a>,
-        key: types::Str,
-        members: Vec<types::Arg>,
-    ) -> PyResult<&'a PyAny> {
+    async fn zrem(&self, key: types::Str, members: Vec<types::Arg>) -> PyResult<i64> {
         let cmd = redis::cmd("ZREM").arg(key).arg(members).to_owned();
-        self.cr.fetch_int(py, cmd)
+        self.cr.fetch(cmd).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{config::Config, pool_manager::PoolManager};
+
+    #[test]
+    fn slots_parse() {
+        let _pm = PoolManager::new(Config::default()).unwrap();
+        // let client = Client::from(pm);
+        // let lenght = Python::with_gil(move |py| {
+        //     let result = client.status(py).;
+        //     // let result = result.downcast::<PyDict>(py).unwrap();
+        //     // result.len()
+        // });
+        // assert_eq!(lenght, ());
     }
 }

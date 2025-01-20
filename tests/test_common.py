@@ -23,7 +23,7 @@ async def test_keys(async_client: redis_rs.AsyncClient):
     key = str(uuid4())
     await async_client.set(key, 1)
 
-    result = await async_client.keys(key, encoding="utf-8")
+    result = await async_client.keys(key)
     assert result == [key]
 
 

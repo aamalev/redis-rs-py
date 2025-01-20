@@ -1,7 +1,7 @@
 use config::Config;
 use pyo3::prelude::*;
 use redis::IntoConnectionInfo;
-mod client;
+mod client_async;
 mod client_result;
 mod client_result_async;
 mod cluster_async;
@@ -40,7 +40,7 @@ fn create_client(
     client_id: Option<String>,
     max_delay: Option<u64>,
     features: Option<Vec<String>>,
-) -> PyResult<client::Client> {
+) -> PyResult<client_async::Client> {
     let mut nodes = initial_nodes.clone();
     if nodes.is_empty() {
         nodes.push("redis://localhost:6379".to_string());
@@ -78,12 +78,27 @@ fn create_client(
 }
 
 #[pymodule]
-#[pyo3(name = "redis_rs")]
-fn redis_rs(py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(create_client, m)?)?;
-    m.add_class::<client::Client>()?;
-    let exceptions = PyModule::new(py, "exceptions")?;
-    m.add_submodule(exceptions)?;
-    crate::exceptions::exceptions(py, exceptions)?;
-    Ok(())
+mod redis_rs {
+    use pyo3::prelude::*;
+
+    #[pymodule_export]
+    use super::create_client;
+
+    #[pymodule_export]
+    use crate::client_async::Client;
+
+    #[pymodule]
+    mod exceptions {
+
+        #[pymodule_export]
+        use crate::exceptions::RedisError;
+
+        #[pymodule_export]
+        use crate::exceptions::PoolError;
+    }
+
+    #[pymodule_init]
+    fn init(_m: &Bound<'_, PyModule>) -> PyResult<()> {
+        Ok(())
+    }
 }

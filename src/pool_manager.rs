@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use redis::{Cmd, FromRedisValue, Value};
 
 use crate::{
-    client::Client,
+    client_async::Client,
     client_result_async::AsyncClientResult,
     cluster_async::Cluster,
     cluster_bb8::BB8Cluster,
@@ -21,10 +21,7 @@ impl From<PoolManager> for Client {
         let ac = AsyncClientResult {
             cm: Arc::new(tokio::sync::RwLock::new(value)),
         };
-        Self {
-            cr: Box::new(ac),
-            client_id,
-        }
+        Self { cr: ac, client_id }
     }
 }
 
@@ -41,7 +38,7 @@ impl PoolManager {
         })
     }
 
-    pub async fn init(&mut self) -> Result<&Self, error::RedisError> {
+    pub async fn init(&mut self) -> Result<(), error::RedisError> {
         let mut nodes = self.config.initial_nodes.clone();
         let ms = self.config.max_size;
         self.pool = match (self.config.cluster, self.config.shards, self.config.bb8) {
@@ -53,12 +50,11 @@ impl PoolManager {
             (Some(true), false, true) => Box::new(BB8Cluster::new(nodes, ms).await),
             (Some(false), false, true) => Box::new(BB8Pool::new(nodes.remove(0), ms).await?),
         };
-        Ok(self)
+        Ok(())
     }
 
-    pub async fn close(&mut self) -> &Self {
+    pub async fn close(&mut self) {
         self.pool = Box::new(ClosedPool);
-        self
     }
 
     pub fn status(&self) -> HashMap<String, redis::Value> {
