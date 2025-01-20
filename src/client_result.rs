@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use pyo3::prelude::*;
 use redis::{Cmd, Value};
 
-use crate::{client::Client, error, types};
+use crate::{client_async::Client, error, types};
 
 pub trait ClientResult {
     fn init<'a>(&self, py: Python<'a>, client: &Client) -> PyResult<&'a PyAny>;
