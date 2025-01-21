@@ -19,7 +19,7 @@ redis-rs
   :target: https://github.com/aamalev/redis-rs-py/actions?query=workflow%3ATests
 
 .. image:: https://img.shields.io/pypi/dm/redis-rs.svg
-  :target: https://pypi.org/project/redis-rs
+  :target: https://pypistats.org/packages/redis-rs
 
 |
 
