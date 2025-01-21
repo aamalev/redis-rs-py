@@ -16,6 +16,8 @@ from .redis_rs import create_client as _create_client
 
 def create_client(
     *args: str,
+    host: str = "localhost",
+    port: int = 6379,
     max_size: Optional[int] = None,
     cluster: Optional[bool] = None,
     username: Optional[str] = None,
@@ -29,6 +31,8 @@ def create_client(
         client_id = f"{socket.gethostname()}-{uuid4()}"
     return _create_client(
         *args,
+        host=host,
+        port=port,
         max_size=max_size,
         cluster=cluster,
         username=username,

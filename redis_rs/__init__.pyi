@@ -20,6 +20,8 @@ class Client:
 
 def create_client(
     *args: str,
+    host: str = "localhost",
+    port: int = 6379,
     max_size: Optional[int] = None,
     cluster: Optional[bool] = None,
     username: Optional[str] = None,
