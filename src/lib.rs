@@ -20,6 +20,8 @@ mod types;
 #[pyfunction]
 #[pyo3(signature = (
     *initial_nodes,
+    host="localhost",
+    port=6379,
     max_size=None,
     cluster=None,
     username = None,
@@ -32,6 +34,8 @@ mod types;
 #[allow(clippy::too_many_arguments)]
 fn create_client(
     initial_nodes: Vec<String>,
+    host: &str,
+    port: u16,
     max_size: Option<u32>,
     cluster: Option<bool>,
     username: Option<String>,
@@ -43,7 +47,7 @@ fn create_client(
 ) -> PyResult<client_async::Client> {
     let mut nodes = initial_nodes.clone();
     if nodes.is_empty() {
-        nodes.push("redis://localhost:6379".to_string());
+        nodes.push(format!("redis://{}:{}", host, port));
     }
     let mut infos = vec![];
     for i in nodes.into_iter() {
