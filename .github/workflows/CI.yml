@@ -46,6 +46,7 @@ jobs:
       - name: Install hatch
         run: pip install --upgrade hatch
       - name: Set version from tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: hatch version $GITHUB_REF_NAME
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -81,6 +82,7 @@ jobs:
       - name: Install hatch
         run: pip install --upgrade hatch
       - name: Set version from tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: hatch version $GITHUB_REF_NAME
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -113,6 +115,7 @@ jobs:
       - name: Install hatch
         run: pip install --upgrade hatch
       - name: Set version from tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: hatch version $GITHUB_REF_NAME
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -143,6 +146,7 @@ jobs:
       - name: Install hatch
         run: pip install --upgrade hatch
       - name: Set version from tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: hatch version $GITHUB_REF_NAME
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -163,6 +167,7 @@ jobs:
       - name: Install hatch
         run: pip install --upgrade hatch
       - name: Set version from tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: hatch version $GITHUB_REF_NAME
       - name: Build sdist
         uses: PyO3/maturin-action@v1
