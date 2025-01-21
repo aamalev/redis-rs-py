@@ -32,9 +32,6 @@ redis-rs
 .. image:: https://img.shields.io/badge/PyO3-maturin-blue.svg
   :target: https://github.com/PyO3/maturin
 
-.. image:: https://img.shields.io/badge/PyO3-asyncio-blue.svg
-  :target: https://github.com/awestlake87/pyo3-asyncio
-
 .. image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
   :target: https://github.com/astral-sh/ruff
   :alt: Linter: ruff
