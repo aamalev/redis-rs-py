@@ -112,11 +112,9 @@ jobs:
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
-      - name: Install hatch
-        run: pip install --upgrade hatch
       - name: Set version from tag
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        run: hatch version $GITHUB_REF_NAME
+        run: sed -i -e 's/^version = .*/version = "${{ github.ref_name }}"/' Cargo.toml
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
