@@ -45,6 +45,7 @@ def client_factory():
             cluster=IS_CLUSTER,
             **kwargs,
         )
+
     return factory
 
 
