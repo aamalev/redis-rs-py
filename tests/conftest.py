@@ -18,6 +18,7 @@ async def get_redis_version(nodes: list) -> str:
     key = "redis_version"
     async with redis_rs.create_client(
         *nodes,
+        features=FEATURES,
     ) as c:
         infos = await c.execute("INFO", "SERVER", encoding="info")
         if isinstance(infos, dict):
