@@ -9,6 +9,7 @@ use crate::{
     cluster_bb8::BB8Cluster,
     config::Config,
     error,
+    mock::MockRedis,
     pool::{ClosedPool, Connection, Pool},
     shards_async::AsyncShards,
     single_bb8::BB8Pool,
@@ -41,14 +42,18 @@ impl PoolManager {
     pub async fn init(&mut self) -> Result<(), error::RedisError> {
         let mut nodes = self.config.initial_nodes.clone();
         let ms = self.config.max_size;
-        self.pool = match (self.config.cluster, self.config.shards, self.config.bb8) {
-            (None, _, _) | (_, true, _) => Box::new(AsyncShards::new(self.config.clone()).await?),
-            (Some(true), false, false) => Box::new(Cluster::new(nodes, ms).await?),
-            (Some(false), false, false) => {
-                Box::new(Node::new(nodes.remove(0), self.config.clone()).await?)
+        self.pool = if self.config.mock {
+            let db = nodes.remove(0).redis.db;
+            Box::new(MockRedis::new(db).await?)
+        } else if self.config.shards || self.config.cluster.is_none() {
+            Box::new(AsyncShards::new(self.config.clone()).await?)
+        } else {
+            match (self.config.cluster.unwrap(), self.config.bb8) {
+                (true, false) => Box::new(Cluster::new(nodes, ms).await?),
+                (false, false) => Box::new(Node::new(nodes.remove(0), self.config.clone()).await?),
+                (true, true) => Box::new(BB8Cluster::new(nodes, ms).await),
+                (false, true) => Box::new(BB8Pool::new(nodes.remove(0), ms).await?),
             }
-            (Some(true), false, true) => Box::new(BB8Cluster::new(nodes, ms).await),
-            (Some(false), false, true) => Box::new(BB8Pool::new(nodes.remove(0), ms).await?),
         };
         Ok(())
     }

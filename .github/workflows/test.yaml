@@ -30,6 +30,21 @@ jobs:
       - name: cargo test
         run: cargo test -F rustls
 
+  pytest-mock:
+    name: pytest on mock redis
+    runs-on: ubuntu-22.04
+    env:
+      REDIS_RS_FEATURES: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: pip install -U hatch
+      - name: Build develop
+        run: hatch run maturin develop -F rustls
+      - name: Run pytest
+        run: hatch run pytest
+
   pytest:
     name: pytest on redis
     runs-on: ubuntu-22.04

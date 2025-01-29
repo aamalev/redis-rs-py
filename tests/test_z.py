@@ -66,5 +66,8 @@ async def test_zrem(async_client: redis_rs.AsyncClient):
     result = await async_client.zrem(key, "a")
     assert result == 1
 
+    result = await async_client.zrem(key, "z")
+    assert result == 0
+
     result = await async_client.zcard(key)
     assert result == 1
