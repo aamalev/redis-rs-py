@@ -18,6 +18,7 @@ async def get_redis_version(nodes: list) -> str:
     key = "redis_version"
     async with redis_rs.create_client(
         *nodes,
+        features=FEATURES,
     ) as c:
         infos = await c.execute("INFO", "SERVER", encoding="info")
         if isinstance(infos, dict):
@@ -31,16 +32,22 @@ async def get_redis_version(nodes: list) -> str:
 
 NODES = [to_addr(node) for node in os.environ.get("REDIS_NODES", "").split(",") if node]
 IS_CLUSTER = os.environ.get("REDIS_CLUSTER", "0") not in {"0"}
+FEATURES = [f for f in os.environ.get("REDIS_RS_FEATURES", "").split(",") if f]
 VERSION = ""
 
 
 @pytest.fixture
 def client_factory():
-    return lambda **kwargs: redis_rs.create_client(
-        *NODES,
-        cluster=IS_CLUSTER,
-        **kwargs,
-    )
+    def factory(**kwargs):
+        features = kwargs.setdefault("features", [])
+        features.extend(FEATURES)
+        return redis_rs.create_client(
+            *NODES,
+            cluster=IS_CLUSTER,
+            **kwargs,
+        )
+
+    return factory
 
 
 @pytest.fixture

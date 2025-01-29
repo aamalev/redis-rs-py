@@ -9,6 +9,7 @@ pub struct Config {
     pub max_delay: Option<u64>, // ms
     pub shards: bool,
     pub bb8: bool,
+    pub mock: bool,
 }
 
 impl Config {
@@ -27,6 +28,7 @@ impl Config {
             match feature.to_ascii_lowercase().as_str() {
                 "shards" => self.shards = true,
                 "bb8" => self.bb8 = true,
+                "mock" | "inmemory" => self.mock = true,
                 _ => continue,
             }
         }

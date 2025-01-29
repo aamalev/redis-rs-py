@@ -9,6 +9,7 @@ mod cluster_bb8;
 mod config;
 mod error;
 mod exceptions;
+mod mock;
 mod pool;
 mod pool_manager;
 mod shards;

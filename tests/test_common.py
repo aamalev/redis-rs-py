@@ -13,6 +13,10 @@ async def test_exists(async_client: redis_rs.AsyncClient):
 
 async def test_delete(async_client: redis_rs.AsyncClient):
     key = str(uuid4())
+
+    result = await async_client.delete(key)
+    assert result == 0
+
     await async_client.set(key, 1)
 
     result = await async_client.delete(key)
