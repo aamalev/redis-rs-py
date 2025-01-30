@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::error;
+use crate::{command::Params, error};
 use async_trait::async_trait;
 
 use redis::aio::ConnectionLike;
@@ -34,9 +34,16 @@ impl ConnectionLike for Connection {
 
 #[async_trait]
 pub trait Pool {
-    async fn get_connection(&self) -> Result<Connection, error::RedisError>;
+    async fn execute_params(
+        &self,
+        cmd: Cmd,
+        params: Params,
+    ) -> Result<redis::Value, error::RedisError>;
 
-    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError>;
+    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
+        let params = Params::from(&cmd);
+        self.execute_params(cmd, params).await
+    }
 
     fn status(&self) -> HashMap<&str, redis::Value>;
 }
@@ -45,11 +52,11 @@ pub struct ClosedPool;
 
 #[async_trait]
 impl Pool for ClosedPool {
-    async fn get_connection(&self) -> Result<Connection, error::RedisError> {
-        Err(error::RedisError::not_initialized())
-    }
-
-    async fn execute(&self, _cmd: Cmd) -> Result<redis::Value, error::RedisError> {
+    async fn execute_params(
+        &self,
+        _cmd: Cmd,
+        _params: Params,
+    ) -> Result<redis::Value, error::RedisError> {
         Err(error::RedisError::not_initialized())
     }
 

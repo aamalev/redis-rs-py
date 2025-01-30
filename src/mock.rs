@@ -9,10 +9,7 @@ use async_trait::async_trait;
 use redis::Cmd;
 use tokio::sync::RwLock;
 
-use crate::{
-    error,
-    pool::{Connection, Pool},
-};
+use crate::{command::Params, error, pool::Pool};
 
 #[derive(Clone, Default)]
 enum InnerValue {
@@ -252,11 +249,11 @@ impl MockRedis {
 
 #[async_trait]
 impl Pool for MockRedis {
-    async fn get_connection(&self) -> Result<Connection, error::RedisError> {
-        todo!("not implemented")
-    }
-
-    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
+    async fn execute_params(
+        &self,
+        cmd: Cmd,
+        _params: Params,
+    ) -> Result<redis::Value, error::RedisError> {
         let mut cmd_iter = cmd.args_iter().filter_map(|arg| match arg {
             redis::Arg::Simple(s) => Some(s),
             _ => None,

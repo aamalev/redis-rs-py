@@ -7,6 +7,8 @@ use redis::{
     cluster_routing::get_slot, ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value,
 };
 
+use crate::command::Params;
+
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ShardNode {
     pub addr: String,
@@ -84,6 +86,11 @@ impl From<String> for Shard {
     }
 }
 
+pub struct Route {
+    pub _slot: Option<u16>,
+    pub shard: Option<Shard>,
+}
+
 #[derive(Default, Debug)]
 pub(crate) struct Slots {
     slots: BTreeMap<u16, Shard>,
@@ -115,53 +122,10 @@ impl Slots {
         self.id_map.get(&id).cloned()
     }
 
-    pub fn get_shard_from(&self, cmd: &redis::Cmd) -> Option<Shard> {
-        let mut cmd_iter = cmd.args_iter().filter_map(|arg| match arg {
-            redis::Arg::Simple(s) => Some(s),
-            _ => None,
-        });
-        let key = match cmd_iter.next() {
-            Some(b"CLUSTER") => match cmd_iter.next() {
-                Some(b"KEYSLOT") => cmd_iter.next(),
-                _ => None,
-            },
-            Some(b"XGROUP" | b"XINFO") => {
-                cmd_iter.next();
-                cmd_iter.next()
-            }
-            Some(b"ZMPOP" | b"ZDIFF" | b"ZINTER" | b"ZINTERCARD" | b"ZINTERSTORE" | b"ZUNION") => {
-                cmd_iter.next();
-                cmd_iter.next()
-            }
-            Some(b"EVAL" | b"BZMPOP" | b"ZDIFFSTORE" | b"ZUNIONSTORE") => {
-                cmd_iter.next();
-                cmd_iter.next();
-                cmd_iter.next()
-            }
-            Some(b"XREAD" | b"XREADGROUP") => {
-                loop {
-                    if let Some(b"STREAMS") | None = cmd_iter.next() {
-                        break;
-                    }
-                }
-                cmd_iter.next()
-            }
-            Some(b"MIGRATE") => {
-                loop {
-                    if let Some(b"KEYS") | None = cmd_iter.next() {
-                        break;
-                    }
-                }
-                cmd_iter.next()
-            }
-            Some(b"INFO" | b"CLIENT" | b"KEYS") => None,
-            _ => cmd_iter.next(),
-        };
-        if let Some(slot) = key.map(get_slot) {
-            self.get_shard(slot)
-        } else {
-            None
-        }
+    pub fn get_route(&self, params: &Params) -> Route {
+        let slot = params.keys.first().map(|k| get_slot(k));
+        let shard = slot.and_then(|s| self.get_shard(s));
+        Route { _slot: slot, shard }
     }
 
     pub(crate) fn get_nodes(&self) -> Vec<ShardNode> {
@@ -235,7 +199,7 @@ impl FromRedisValue for Slots {
 #[cfg(test)]
 mod tests {
     use super::{Shard, Slots};
-    use crate::shards::ShardNode;
+    use crate::{command::Params, shards::ShardNode};
     use redis::{FromRedisValue, Value};
 
     const SLOT_SIZE: u16 = 16384;
@@ -292,7 +256,7 @@ mod tests {
     }
 
     #[test]
-    fn slots_get_shard_from() {
+    fn slots_get_route() {
         let mut slots = Slots::default();
 
         let shard1 = Shard::from("1.2.3.3");
@@ -300,8 +264,9 @@ mod tests {
         let shard0 = Shard::from("1.2.3.4");
         slots.slots.insert(0, shard0);
 
-        let cmd = redis::cmd("GET").arg("a").clone();
-        let shard = slots.get_shard_from(&cmd);
-        assert_eq!(Some(shard1), shard);
+        let cmd = redis::cmd("GET").arg("a").to_owned();
+        let params = Params::from(&cmd);
+        let route = slots.get_route(&params);
+        assert_eq!(Some(shard1), route.shard);
     }
 }

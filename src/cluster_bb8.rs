@@ -1,13 +1,6 @@
-use std::collections::HashMap;
-
-use crate::{
-    error,
-    pool::{Connection, Pool},
-};
-use async_trait::async_trait;
 use redis::{
-    aio::ConnectionLike, cluster::ClusterClient, cluster_async::ClusterConnection, Cmd, ErrorKind,
-    IntoConnectionInfo, RedisError,
+    cluster::ClusterClient, cluster_async::ClusterConnection, ErrorKind, IntoConnectionInfo,
+    RedisError,
 };
 
 pub struct ClusterManager {
@@ -42,56 +35,5 @@ impl bb8::ManageConnection for ClusterManager {
 
     fn has_broken(&self, _: &mut Self::Connection) -> bool {
         false
-    }
-}
-
-type Manager = ClusterManager;
-
-pub struct BB8Cluster {
-    pool: bb8::Pool<Manager>,
-}
-
-impl BB8Cluster {
-    pub async fn new<T>(initial_nodes: Vec<T>, max_size: u32) -> Self
-    where
-        T: IntoConnectionInfo,
-    {
-        let manager = Manager::new(initial_nodes).unwrap();
-        let pool = bb8::Pool::builder()
-            .max_size(max_size)
-            .build(manager)
-            .await
-            .unwrap();
-        Self { pool }
-    }
-}
-
-#[async_trait]
-impl Pool for BB8Cluster {
-    async fn get_connection(&self) -> Result<Connection, error::RedisError> {
-        let c = self.pool.get().await?;
-        Ok(Connection {
-            c: Box::new(c.to_owned()),
-        })
-    }
-
-    async fn execute(&self, cmd: Cmd) -> Result<redis::Value, error::RedisError> {
-        let mut conn = self.pool.get().await?;
-        let value = conn.req_packed_command(&cmd).await?;
-        Ok(value)
-    }
-
-    fn status(&self) -> HashMap<&str, redis::Value> {
-        let mut result = HashMap::new();
-        result.insert("closed", redis::Value::Boolean(false));
-        result.insert("impl", redis::Value::SimpleString("bb8_cluster".into()));
-        result.insert("cluster", redis::Value::Boolean(true));
-        let state = self.pool.state();
-        result.insert("connections", redis::Value::Int(state.connections.into()));
-        result.insert(
-            "idle_connections",
-            redis::Value::Int(state.idle_connections.into()),
-        );
-        result
     }
 }

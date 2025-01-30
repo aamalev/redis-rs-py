@@ -6,14 +6,12 @@ use crate::{
     client_async::Client,
     client_result_async::AsyncClientResult,
     cluster_async::Cluster,
-    cluster_bb8::BB8Cluster,
     config::Config,
     error,
     mock::MockRedis,
-    pool::{ClosedPool, Connection, Pool},
+    node::Node,
+    pool::{ClosedPool, Pool},
     shards_async::AsyncShards,
-    single_bb8::BB8Pool,
-    single_node::Node,
 };
 
 impl From<PoolManager> for Client {
@@ -48,11 +46,9 @@ impl PoolManager {
         } else if self.config.shards || self.config.cluster.is_none() {
             Box::new(AsyncShards::new(self.config.clone()).await?)
         } else {
-            match (self.config.cluster.unwrap(), self.config.bb8) {
-                (true, false) => Box::new(Cluster::new(nodes, ms).await?),
-                (false, false) => Box::new(Node::new(nodes.remove(0), self.config.clone()).await?),
-                (true, true) => Box::new(BB8Cluster::new(nodes, ms).await),
-                (false, true) => Box::new(BB8Pool::new(nodes.remove(0), ms).await?),
+            match self.config.cluster.unwrap() {
+                true => Box::new(Cluster::new(nodes, ms).await?),
+                false => Box::new(Node::new(nodes.remove(0), self.config.clone()).await?),
             }
         };
         Ok(())
@@ -94,10 +90,6 @@ impl PoolManager {
             let result: T = FromRedisValue::from_redis_value(&value)?;
             Ok(result)
         }
-    }
-
-    pub async fn get_connection(&self) -> Result<Connection, error::RedisError> {
-        self.pool.get_connection().await
     }
 }
 
