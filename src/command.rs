@@ -1,13 +1,43 @@
+use crate::types::{Codec, Str};
+
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct Params {
     pub keys: Vec<Vec<u8>>,
     pub block: bool,
+    pub codec: Codec,
+}
+
+impl From<Codec> for Params {
+    fn from(codec: Codec) -> Self {
+        Self {
+            codec,
+            ..Default::default()
+        }
+    }
 }
 
 impl From<&[u8]> for Params {
     fn from(value: &[u8]) -> Self {
         Self {
             keys: vec![value.to_vec()],
+            ..Default::default()
+        }
+    }
+}
+
+impl From<&Str> for Params {
+    fn from(value: &Str) -> Self {
+        Self {
+            keys: vec![value.into()],
+            ..Default::default()
+        }
+    }
+}
+
+impl From<&Vec<Str>> for Params {
+    fn from(value: &Vec<Str>) -> Self {
+        Self {
+            keys: value.iter().map(|x| x.into()).collect(),
             ..Default::default()
         }
     }

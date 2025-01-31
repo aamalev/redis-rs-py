@@ -6,6 +6,7 @@ use crate::{
     client_async::Client,
     client_result_async::AsyncClientResult,
     cluster_async::Cluster,
+    command::Params,
     config::Config,
     error,
     mock::MockRedis,
@@ -82,8 +83,12 @@ impl PoolManager {
             .collect()
     }
 
-    pub async fn execute<T: FromRedisValue>(&self, cmd: Cmd) -> Result<T, error::RedisError> {
-        let value = self.pool.execute(cmd).await?;
+    pub async fn execute<T: FromRedisValue>(
+        &self,
+        cmd: Cmd,
+        params: Params,
+    ) -> Result<T, error::RedisError> {
+        let value = self.pool.execute(cmd, params).await?;
         if let Value::ServerError(err) = value {
             Err(redis::RedisError::from(err))?
         } else {

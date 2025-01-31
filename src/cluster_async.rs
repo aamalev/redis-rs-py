@@ -28,11 +28,7 @@ impl Cluster {
 
 #[async_trait]
 impl Pool for Cluster {
-    async fn execute_params(
-        &self,
-        cmd: Cmd,
-        params: Params,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd, params: Params) -> Result<redis::Value, error::RedisError> {
         let value = if params.block {
             let mut conn = self.pool.get().await?;
             conn.req_packed_command(&cmd).await?
