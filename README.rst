@@ -62,6 +62,7 @@ Features
 * Support typing
 * Encoding values from str, int, float
 * Decoding values to str, int, float, list, dict
+* Partial implementation redis mock-client for testing mode
 
 
 Install
@@ -87,6 +88,9 @@ Using
           "redis://redis-node002",
           max_size=1,
           cluster=True,
+          features=[
+            "mock",  # enable implementation for testing
+          ],
       ) as x:
           info = await x.execute("INFO", "SERVER", encoding="info")
           print(info["redis_version"])
