@@ -9,7 +9,7 @@ use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
 
 use crate::error;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub enum Codec {
     #[default]
     Bytes,
@@ -233,6 +233,15 @@ impl From<Str> for String {
         match value {
             Str::Bytes(b) => String::from_utf8_lossy(&b).to_string(),
             Str::String(s) => s,
+        }
+    }
+}
+
+impl From<&Str> for Vec<u8> {
+    fn from(value: &Str) -> Self {
+        match value {
+            Str::Bytes(b) => b.clone(),
+            Str::String(s) => s.as_bytes().to_vec(),
         }
     }
 }

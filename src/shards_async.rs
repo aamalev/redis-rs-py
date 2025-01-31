@@ -52,7 +52,10 @@ impl AsyncShards {
         for addr in vn.into_iter() {
             let mut node = nodes.remove(&addr).unwrap();
             let id = node
-                .execute(redis::cmd("CLUSTER").arg("MYID").to_owned())
+                .execute(
+                    redis::cmd("CLUSTER").arg("MYID").to_owned(),
+                    Params::default(),
+                )
                 .await;
             if let Ok(Value::BulkString(id)) = id {
                 info = Some(node.info.clone());
@@ -83,7 +86,10 @@ impl AsyncShards {
         for node in nodes.values() {
             let node = node.clone();
             if let Ok(r) = node
-                .execute(redis::cmd("CLUSTER").arg("SLOTS").to_owned())
+                .execute(
+                    redis::cmd("CLUSTER").arg("SLOTS").to_owned(),
+                    Params::default(),
+                )
                 .await
             {
                 if self.slots.write().await.set(r).is_ok() {
@@ -111,7 +117,7 @@ impl AsyncShards {
             .get(addr.as_str())
             .ok_or(error::RedisError::NotFoundNode)?;
         let node = node.clone();
-        let r = node.execute_params(cmd.clone(), params).await?;
+        let r = node.execute(cmd.clone(), params).await?;
         Ok(r)
     }
 
@@ -134,18 +140,14 @@ impl AsyncShards {
             nodes.get(addr).ok_or(error::RedisError::NotFoundNode)?
         };
         let node = node.clone();
-        let r = node.execute_params(cmd.clone(), params).await?;
+        let r = node.execute(cmd.clone(), params).await?;
         Ok(r)
     }
 }
 
 #[async_trait]
 impl Pool for AsyncShards {
-    async fn execute_params(
-        &self,
-        cmd: Cmd,
-        _params: Params,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd, _params: Params) -> Result<redis::Value, error::RedisError> {
         match self.send_command(&cmd).await {
             Err(error::RedisError::NotFoundNode) => {
                 Ok(self.send_command_with_add_node(&cmd).await?)

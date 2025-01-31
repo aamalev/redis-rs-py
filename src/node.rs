@@ -45,11 +45,7 @@ impl Node {
 
 #[async_trait]
 impl Pool for Node {
-    async fn execute_params(
-        &self,
-        cmd: Cmd,
-        params: Params,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd, params: Params) -> Result<redis::Value, error::RedisError> {
         let value = if params.block {
             let mut c = self.pool.get().await?;
             c.req_packed_command(&cmd).await?

@@ -249,11 +249,7 @@ impl MockRedis {
 
 #[async_trait]
 impl Pool for MockRedis {
-    async fn execute_params(
-        &self,
-        cmd: Cmd,
-        _params: Params,
-    ) -> Result<redis::Value, error::RedisError> {
+    async fn execute(&self, cmd: Cmd, _params: Params) -> Result<redis::Value, error::RedisError> {
         let mut cmd_iter = cmd.args_iter().filter_map(|arg| match arg {
             redis::Arg::Simple(s) => Some(s),
             _ => None,
