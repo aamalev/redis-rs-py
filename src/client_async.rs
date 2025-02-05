@@ -96,7 +96,8 @@ impl Client {
     ) -> PyResult<HashMap<String, f64>> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
-        let params = Params::from(&cmd);
+        let mut params = Params::from(&cmd);
+        params.codec = types::Codec::Float;
         self.cr.fetch(cmd, params).await
     }
 
