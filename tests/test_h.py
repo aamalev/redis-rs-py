@@ -69,3 +69,11 @@ async def test_hmget(async_client: redis_rs.AsyncClient):
     assert n == 3
     result = await async_client.hmget(key, "x", "z", encoding="int")
     assert result == [2, 4]
+
+
+async def test_hget(async_client: redis_rs.AsyncClient):
+    key = str(uuid4())
+    n = await async_client.hset(key, "x", "2", "y", b"3", "z", 4)
+    assert n == 3
+    result = await async_client.hget(key, "x", encoding="int")
+    assert result == 2

@@ -410,6 +410,22 @@ impl Pool for MockRedis {
                 }
                 redis::Value::Array(result)
             }
+            Some(b"HGET") => {
+                let mut result = redis::Value::Nil;
+                if let Some(key) = cmd_iter.next() {
+                    let values = self.values.read().await;
+                    if let Some(Value {
+                        value: InnerValue::Map(m),
+                        ..
+                    }) = values.get(key)
+                    {
+                        if let Some(v) = cmd_iter.next().and_then(|f| m.get(f)) {
+                            result = v.clone();
+                        }
+                    };
+                }
+                result
+            }
             Some(b"HEXISTS") => {
                 let mut result = false;
                 if let Some(key) = cmd_iter.next() {
@@ -420,9 +436,7 @@ impl Pool for MockRedis {
                     }) = values.get(key)
                     {
                         if let Some(f) = cmd_iter.next() {
-                            if m.contains_key(f) {
-                                result = true;
-                            }
+                            result = m.contains_key(f);
                         }
                     };
                 }
