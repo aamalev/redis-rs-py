@@ -12,6 +12,16 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn mock() -> Self {
+        Self {
+            mock: true,
+            ..Default::default()
+        }
+    }
+
     pub fn set_nodes<T>(&mut self, nodes: Vec<T>) -> Result<(), redis::RedisError>
     where
         T: IntoConnectionInfo,

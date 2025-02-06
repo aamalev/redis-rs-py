@@ -110,4 +110,14 @@ mod tests {
         let result = pm.status();
         assert_eq!(result.len(), 3);
     }
+
+    #[tokio::test]
+    async fn pm_mock() {
+        let cfg = Config::mock();
+        let mut pm = PoolManager::new(cfg).unwrap();
+        pm.init().await.unwrap();
+        let result = pm.status();
+        pm.close().await;
+        assert_eq!(result.len(), 5);
+    }
 }
