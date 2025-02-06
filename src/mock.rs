@@ -702,7 +702,13 @@ impl Pool for MockRedis {
                                 if id.eq(">") {
                                     if let Some(ref group) = group {
                                         let groups = value.groups.read().await;
-                                        id = groups.get(group).cloned().unwrap();
+                                        if let Some(group) = groups.get(group) {
+                                            id = group.clone();
+                                        } else {
+                                            Err(error::RedisError::CommandError(
+                                                "NOGROUP No such consumer group".into(),
+                                            ))?;
+                                        }
                                     }
                                 } else if id.eq("$") {
                                     id = format!(
