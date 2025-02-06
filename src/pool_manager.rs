@@ -42,7 +42,7 @@ impl PoolManager {
         let mut nodes = self.config.initial_nodes.clone();
         let ms = self.config.max_size;
         self.pool = if self.config.mock {
-            let db = nodes.remove(0).redis.db;
+            let db = nodes.get(0).map(|a| a.redis.db).unwrap_or(0);
             Box::new(MockRedis::new(db).await?)
         } else if self.config.shards || self.config.cluster.is_none() {
             Box::new(AsyncShards::new(self.config.clone()).await?)
