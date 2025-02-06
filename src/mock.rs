@@ -899,6 +899,68 @@ impl Pool for MockRedis {
                 }
                 redis::Value::Int(result)
             }
+            Some(b"ZPOPMIN") => {
+                let mut result = Vec::new();
+                if let Some(key) = cmd_iter.next() {
+                    let count = cmd_iter
+                        .next()
+                        .and_then(|v| String::from_utf8_lossy(v).parse::<usize>().ok())
+                        .unwrap_or(1);
+                    let mut values = self.values.write().await;
+                    let value = values.entry(key.into()).or_insert_with(Value::empty_map);
+                    let m = value.get_map_mut();
+                    let mut x: Vec<_> = m
+                        .iter()
+                        .filter_map(|(k, v)| match v {
+                            redis::Value::Double(ref s) => Some((s, k)),
+                            _ => None,
+                        })
+                        .collect();
+                    x.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                    let x: Vec<_> = x
+                        .into_iter()
+                        .take(count)
+                        .map(|(s, v)| (*s, v.to_vec()))
+                        .collect();
+                    for (score, value) in x {
+                        m.remove(&value);
+                        result.push(redis::Value::BulkString(value));
+                        result.push(redis::Value::Double(score));
+                    }
+                }
+                redis::Value::Array(result)
+            }
+            Some(b"BZPOPMIN") => {
+                let mut result = Vec::new();
+                let keys = cmd_iter.collect::<Vec<_>>();
+                let _timeout = keys
+                    .last()
+                    .and_then(|v| String::from_utf8_lossy(v).parse::<usize>().ok())
+                    .unwrap_or(0);
+                let mut values = self.values.write().await;
+                for key in keys {
+                    let value = values.entry(key.into()).or_insert_with(Value::empty_map);
+                    let m = value.get_map_mut();
+                    let mut x: Vec<_> = m
+                        .iter()
+                        .filter_map(|(k, v)| match v {
+                            redis::Value::Double(ref s) => Some((s, k)),
+                            _ => None,
+                        })
+                        .collect();
+                    x.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                    if let Some((s, v)) = x.into_iter().next() {
+                        let score = *s;
+                        let value = v.to_vec();
+                        m.remove(&value);
+                        result.push(redis::Value::BulkString(key.to_vec()));
+                        result.push(redis::Value::BulkString(value));
+                        result.push(redis::Value::Double(score));
+                        break;
+                    }
+                }
+                redis::Value::Array(result)
+            }
             Some(b"ZREM") => {
                 let mut result = 0;
                 if let Some(key) = cmd_iter.next() {
@@ -1086,6 +1148,51 @@ mod tests {
                 redis::Value::BulkString(b"f".to_vec()),
                 redis::Value::BulkString(b"2".to_vec()),
             )])
+        );
+    }
+
+    #[tokio::test]
+    async fn zadd_zpopmin() {
+        let key = "zkey";
+        let params = Params::default();
+        let m = MockRedis::new(0).await.unwrap();
+        let cmd = redis::cmd("ZADD").arg(key).arg(3).arg("a").to_owned();
+        let result = m.execute(cmd, params.clone()).await.unwrap();
+        assert_eq!(result, redis::Value::Int(1));
+        let cmd = redis::cmd("ZADD").arg(key).arg(4).arg("b").to_owned();
+        let result = m.execute(cmd, params.clone()).await.unwrap();
+        assert_eq!(result, redis::Value::Int(1));
+        let cmd = redis::cmd("ZPOPMIN").arg(key).to_owned();
+        let result = m.execute(cmd, params).await.unwrap();
+        assert_eq!(
+            result,
+            redis::Value::Array(vec![
+                redis::Value::BulkString(b"a".to_vec()),
+                redis::Value::Double(3.0),
+            ])
+        );
+    }
+
+    #[tokio::test]
+    async fn zadd_bzpopmin() {
+        let key = "bzkey";
+        let params = Params::default();
+        let m = MockRedis::new(0).await.unwrap();
+        let cmd = redis::cmd("ZADD").arg(key).arg(5).arg("a").to_owned();
+        let result = m.execute(cmd, params.clone()).await.unwrap();
+        assert_eq!(result, redis::Value::Int(1));
+        let cmd = redis::cmd("ZADD").arg(key).arg(6).arg("b").to_owned();
+        let result = m.execute(cmd, params.clone()).await.unwrap();
+        assert_eq!(result, redis::Value::Int(1));
+        let cmd = redis::cmd("BZPOPMIN").arg(key).to_owned();
+        let result = m.execute(cmd, params).await.unwrap();
+        assert_eq!(
+            result,
+            redis::Value::Array(vec![
+                redis::Value::BulkString(key.as_bytes().to_vec()),
+                redis::Value::BulkString(b"a".to_vec()),
+                redis::Value::Double(5.0),
+            ])
         );
     }
 }

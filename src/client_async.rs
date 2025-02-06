@@ -595,6 +595,23 @@ impl Client {
         let cmd = redis::cmd("ZREM").arg(key).arg(members).to_owned();
         self.cr.fetch(cmd, params).await
     }
+
+    #[pyo3(signature = (key, count = None))]
+    async fn zpopmin(&self, key: types::Str, count: Option<i64>) -> PyResult<PyObject> {
+        let mut params = Params::from(&key);
+        params.codec = types::Codec::Float;
+        let cmd = redis::cmd("ZPOPMIN").arg(key).arg(count).to_owned();
+        self.cr.fetch_dict(cmd, params).await
+    }
+
+    #[pyo3(signature = (*keys, timeout = 0))]
+    async fn bzpopmin(&self, keys: Vec<types::Str>, timeout: i64) -> PyResult<PyObject> {
+        let mut params = Params::from(&keys);
+        params.codec = types::Codec::Float;
+        params.block = true;
+        let cmd = redis::cmd("BZPOPMIN").arg(keys).arg(timeout).to_owned();
+        self.cr.fetch_dict(cmd, params).await
+    }
 }
 
 #[cfg(test)]
