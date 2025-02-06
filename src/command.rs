@@ -1,6 +1,6 @@
 use crate::types::{Codec, Str};
 
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, Clone, PartialEq, Eq, Debug)]
 pub struct Params {
     pub keys: Vec<Vec<u8>>,
     pub block: bool,
@@ -60,7 +60,6 @@ impl From<&redis::Cmd> for Params {
                 cmd_iter.next()
             }
             Some(b"ZMPOP") => {
-                result.block = true;
                 cmd_iter.next();
                 cmd_iter.next()
             }
@@ -72,6 +71,10 @@ impl From<&redis::Cmd> for Params {
                 result.block = true;
                 cmd_iter.next();
                 cmd_iter.next();
+                cmd_iter.next()
+            }
+            Some(b"BZPOPMAX" | b"BZPOPMIN") => {
+                result.block = true;
                 cmd_iter.next()
             }
             Some(b"EVAL" | b"ZDIFFSTORE" | b"ZUNIONSTORE") => {

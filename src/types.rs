@@ -165,18 +165,26 @@ pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<PyObject> {
                 let val = _to_dict(py, value, codec.clone())?;
                 result.set_item(k, val)?;
             }
-        } else if let Value::Array(v) = value {
-            for (n, value) in v.into_iter().enumerate() {
-                let map: HashMap<String, Value> =
-                    FromRedisValue::from_redis_value(&value).unwrap_or_default();
-                if map.len() == 1 {
-                    for (k, value) in map.into_iter() {
-                        let val = _to_dict(py, value, codec.clone())?;
-                        result.set_item(k, val)?;
+        } else if let Value::Array(mut v) = value {
+            if let Some(redis::Value::BulkString(key)) = v.first() {
+                let key = String::from_utf8_lossy(key).to_string();
+                v.remove(0);
+                let tail = redis::Value::Array(v);
+                let value = _to_dict(py, tail, codec.clone())?;
+                result.set_item(key, value)?;
+            } else {
+                for (n, value) in v.into_iter().enumerate() {
+                    let map: HashMap<String, Value> =
+                        FromRedisValue::from_redis_value(&value).unwrap_or_default();
+                    if map.len() == 1 {
+                        for (k, value) in map.into_iter() {
+                            let val = _to_dict(py, value, codec.clone())?;
+                            result.set_item(k, val)?;
+                        }
+                    } else {
+                        let value = _to_dict(py, value, codec.clone())?;
+                        result.set_item(n, value)?;
                     }
-                } else {
-                    let value = _to_dict(py, value, codec.clone())?;
-                    result.set_item(n, value)?;
                 }
             }
         }
