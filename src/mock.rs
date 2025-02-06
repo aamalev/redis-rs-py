@@ -916,7 +916,7 @@ impl Pool for MockRedis {
                             _ => None,
                         })
                         .collect();
-                    x.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                    x.sort_by(|a, b| a.0.partial_cmp(b.0).unwrap());
                     let x: Vec<_> = x
                         .into_iter()
                         .take(count)
@@ -948,7 +948,7 @@ impl Pool for MockRedis {
                             _ => None,
                         })
                         .collect();
-                    x.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+                    x.sort_by(|a, b| a.0.partial_cmp(b.0).unwrap());
                     if let Some((s, v)) = x.into_iter().next() {
                         let score = *s;
                         let value = v.to_vec();

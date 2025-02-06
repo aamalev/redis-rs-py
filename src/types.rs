@@ -167,7 +167,7 @@ pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<PyObject> {
             }
         } else if let Value::Array(mut v) = value {
             if let Some(redis::Value::BulkString(key)) = v.first() {
-                let key = String::from_utf8_lossy(&key).to_string();
+                let key = String::from_utf8_lossy(key).to_string();
                 v.remove(0);
                 let tail = redis::Value::Array(v);
                 let value = _to_dict(py, tail, codec.clone())?;
