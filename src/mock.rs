@@ -974,10 +974,9 @@ impl Pool for MockRedis {
                     let mut values = self.values.write().await;
                     let value = values.entry(key.into()).or_insert_with(Value::empty_set);
                     let s = value.get_set_mut();
-                    s.extend(cmd_iter.map(|v| {
-                        result = true;
-                        v.to_vec()
-                    }));
+                    let old = s.len();
+                    s.extend(cmd_iter.map(|v| v.to_vec()));
+                    result = old != s.len();
                 }
                 redis::Value::Boolean(result)
             }
