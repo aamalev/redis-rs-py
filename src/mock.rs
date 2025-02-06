@@ -1041,3 +1041,52 @@ impl Pool for MockRedis {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{command::Params, pool::Pool};
+
+    use super::MockRedis;
+
+    #[tokio::test]
+    async fn status() {
+        let m = MockRedis::new(0).await.unwrap();
+        let result = m.status();
+        assert_eq!(result.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn set_get() {
+        let key = "key";
+        let params = Params::default();
+        let m = MockRedis::new(0).await.unwrap();
+        let cmd = redis::cmd("SET").arg(key).arg(1).to_owned();
+        let result = m.execute(cmd, params.clone()).await.unwrap();
+        assert_eq!(result, redis::Value::Nil);
+        let cmd = redis::cmd("GET").arg(key).to_owned();
+        let result = m.execute(cmd, params).await.unwrap();
+        assert_eq!(result, redis::Value::BulkString(b"1".to_vec()));
+    }
+
+    #[tokio::test]
+    async fn hset_hget_hgetall() {
+        let key = "hkey";
+        let params = Params::default();
+        let m = MockRedis::new(0).await.unwrap();
+        let cmd = redis::cmd("HSET").arg(key).arg("f").arg(2).to_owned();
+        let result = m.execute(cmd, params.clone()).await.unwrap();
+        assert_eq!(result, redis::Value::Int(1));
+        let cmd = redis::cmd("HGET").arg(key).arg("f").to_owned();
+        let result = m.execute(cmd, params.clone()).await.unwrap();
+        assert_eq!(result, redis::Value::BulkString(b"2".to_vec()));
+        let cmd = redis::cmd("HGETALL").arg(key).to_owned();
+        let result = m.execute(cmd, params).await.unwrap();
+        assert_eq!(
+            result,
+            redis::Value::Map(vec![(
+                redis::Value::BulkString(b"f".to_vec()),
+                redis::Value::BulkString(b"2".to_vec()),
+            )])
+        );
+    }
+}
