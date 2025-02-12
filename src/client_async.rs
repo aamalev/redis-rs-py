@@ -305,18 +305,18 @@ impl Client {
         self.cr.execute(cmd, params).await
     }
 
-    #[pyo3(signature = (*keys, timeout, encoding = None))]
+    #[pyo3(signature = (*keys, timeout = 0.0, encoding = None))]
     async fn blpop(
         &self,
         keys: Vec<types::Str>,
-        timeout: types::Arg,
+        timeout: f32,
         encoding: Option<String>,
     ) -> PyResult<PyObject> {
         let mut params = Params::from(&keys);
         params.codec = encoding.into();
         params.block = true;
         let cmd = redis::cmd("BLPOP").arg(keys).arg(timeout).to_owned();
-        self.cr.execute(cmd, params).await
+        self.cr.fetch_dict(cmd, params).await
     }
 
     #[pyo3(signature = (key, count, element))]
