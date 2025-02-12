@@ -88,10 +88,10 @@ async def test_blpop(async_client: redis_rs.AsyncClient):
     assert n == 1
 
     result = await async_client.blpop(key1, key2, timeout=0, encoding="int")
-    assert result == [None, 1]
+    assert result == {key1: 1}
 
     result = await async_client.blpop(key1, key2, timeout=0, encoding="int")
-    assert result == [None, 2]
+    assert result == {key2: 2}
 
 
 async def test_llen(async_client: redis_rs.AsyncClient):
