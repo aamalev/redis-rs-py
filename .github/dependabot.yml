@@ -9,6 +9,16 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      redis:
+        patterns:
+          - redis
+          - bb8
+          - bb8-redis
+      serde:
+        patterns:
+          - serde
+          - serde_json
 
   - package-ecosystem: "pip"
     directory: "/"
