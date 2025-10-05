@@ -3,9 +3,33 @@ use std::{
     path::PathBuf,
 };
 
-use redis::{
-    cluster_routing::get_slot, ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value,
-};
+use redis::{ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value};
+
+pub(crate) const SLOT_SIZE: u16 = 16384;
+
+fn sub_key(key: &[u8]) -> &[u8] {
+    key.iter()
+        .position(|b| *b == b'{')
+        .and_then(|open| {
+            let after_open = open + 1;
+            key[after_open..]
+                .iter()
+                .position(|b| *b == b'}')
+                .and_then(|close_offset| {
+                    if close_offset != 0 {
+                        Some(&key[after_open..after_open + close_offset])
+                    } else {
+                        None
+                    }
+                })
+        })
+        .unwrap_or(key)
+}
+
+fn slot(key: &[u8]) -> u16 {
+    let key = sub_key(key);
+    crc16::State::<crc16::XMODEM>::calculate(key) % SLOT_SIZE
+}
 
 use crate::command::Params;
 
@@ -123,7 +147,7 @@ impl Slots {
     }
 
     pub fn get_route(&self, params: &Params) -> Route {
-        let slot = params.keys.first().map(|k| get_slot(k));
+        let slot = params.keys.first().map(|k| slot(k));
         let shard = slot.and_then(|s| self.get_shard(s));
         Route { _slot: slot, shard }
     }
