@@ -41,7 +41,7 @@ impl AsyncClientResult {
         Ok(result)
     }
 
-    pub async fn execute(&self, cmd: Cmd, params: Params) -> PyResult<PyObject> {
+    pub async fn execute(&self, cmd: Cmd, params: Params) -> PyResult<Py<PyAny>> {
         let cm = self.cm.clone();
         let encoding = params.codec.clone();
         let result = tokio_rt()
@@ -51,7 +51,7 @@ impl AsyncClientResult {
         Python::with_gil(|py| types::to_object(py, result, encoding))
     }
 
-    pub async fn fetch_dict(&self, cmd: Cmd, params: Params) -> PyResult<PyObject> {
+    pub async fn fetch_dict(&self, cmd: Cmd, params: Params) -> PyResult<Py<PyAny>> {
         let cm = self.cm.clone();
         let encoding = params.codec.clone();
         let result = tokio_rt()

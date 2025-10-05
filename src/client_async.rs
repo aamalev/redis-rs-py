@@ -19,14 +19,14 @@ impl Client {
 
     async fn __aexit__(
         &self,
-        _exc_type: PyObject,
-        _exc_value: PyObject,
-        _traceback: PyObject,
+        _exc_type: Py<PyAny>,
+        _exc_value: Py<PyAny>,
+        _traceback: Py<PyAny>,
     ) -> PyResult<()> {
         self.cr.close().await
     }
 
-    fn status(&self, py: Python) -> PyResult<HashMap<String, PyObject>> {
+    fn status(&self, py: Python) -> PyResult<HashMap<String, Py<PyAny>>> {
         let status = self.cr.status()?;
         let mut result = HashMap::new();
         for (k, v) in status.into_iter() {
@@ -42,7 +42,7 @@ impl Client {
         cmd: types::Str,
         args: Vec<types::Arg>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
         let mut params = Params::from(&cmd);
@@ -80,7 +80,7 @@ impl Client {
         cmd: types::Str,
         args: Vec<types::Arg>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let cmd = String::from(cmd).to_ascii_uppercase();
         let cmd = redis::cmd(cmd.as_str()).arg(args).to_owned();
         let mut params = Params::from(&cmd);
@@ -153,7 +153,7 @@ impl Client {
         numkeys: u8,
         args: Vec<types::Arg>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let cmd = redis::cmd("EVAL")
             .arg(script)
             .arg(numkeys)
@@ -180,7 +180,7 @@ impl Client {
         ex: Option<usize>,
         px: Option<usize>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let mut cmd = redis::cmd("SET").arg(key).arg(value).to_owned();
@@ -196,7 +196,7 @@ impl Client {
     }
 
     #[pyo3(signature = (key, *, encoding = None))]
-    async fn get(&self, key: types::Str, encoding: Option<String>) -> PyResult<PyObject> {
+    async fn get(&self, key: types::Str, encoding: Option<String>) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let cmd = redis::cmd("GET").arg(key).to_owned();
@@ -225,7 +225,7 @@ impl Client {
         key: types::Str,
         field: types::Str,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let cmd = redis::cmd("HGET").arg(key).arg(field).to_owned();
@@ -238,7 +238,7 @@ impl Client {
         key: types::Str,
         fields: Vec<types::Str>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let cmd = redis::cmd("HMGET").arg(key).arg(fields).to_owned();
@@ -246,7 +246,7 @@ impl Client {
     }
 
     #[pyo3(signature = (key, *, encoding = None))]
-    async fn hgetall(&self, key: types::Str, encoding: Option<String>) -> PyResult<PyObject> {
+    async fn hgetall(&self, key: types::Str, encoding: Option<String>) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let cmd = redis::cmd("HGETALL").arg(key).to_owned();
@@ -298,7 +298,7 @@ impl Client {
         key: types::Str,
         count: Option<NonZeroUsize>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let cmd = redis::cmd("LPOP").arg(key).arg(count).to_owned();
@@ -311,7 +311,7 @@ impl Client {
         keys: Vec<types::Str>,
         timeout: f32,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&keys);
         params.codec = encoding.into();
         params.block = true;
@@ -337,7 +337,7 @@ impl Client {
         start: isize,
         stop: isize,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let cmd = redis::cmd("LRANGE")
@@ -467,7 +467,7 @@ impl Client {
         noack: Option<bool>,
         group: Option<types::Str>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let encoding = types::Codec::from(encoding);
         let mut params = Params::from(encoding);
         let mut id = id.unwrap_or(types::Arg::Int(0));
@@ -533,7 +533,7 @@ impl Client {
         score: Option<f64>,
         incr: Option<f64>,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = encoding.into();
         let mut cmd = redis::cmd("ZADD").arg(key).to_owned();
@@ -563,7 +563,7 @@ impl Client {
         args: Vec<types::Arg>,
         withscores: bool,
         encoding: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         let mut cmd = redis::cmd("ZRANGE")
             .arg(key)
@@ -597,7 +597,7 @@ impl Client {
     }
 
     #[pyo3(signature = (key, count = None))]
-    async fn zpopmin(&self, key: types::Str, count: Option<i64>) -> PyResult<PyObject> {
+    async fn zpopmin(&self, key: types::Str, count: Option<i64>) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&key);
         params.codec = types::Codec::Float;
         let cmd = redis::cmd("ZPOPMIN").arg(key).arg(count).to_owned();
@@ -605,7 +605,7 @@ impl Client {
     }
 
     #[pyo3(signature = (*keys, timeout = 0))]
-    async fn bzpopmin(&self, keys: Vec<types::Str>, timeout: i64) -> PyResult<PyObject> {
+    async fn bzpopmin(&self, keys: Vec<types::Str>, timeout: i64) -> PyResult<Py<PyAny>> {
         let mut params = Params::from(&keys);
         params.codec = types::Codec::Float;
         params.block = true;

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use pyo3::{
     prelude::*,
     types::{PyBytes, PyDict, PyDictMethods, PyList, PySet, PySetMethods},
-    FromPyObject, IntoPyObjectExt, PyAny, PyObject, PyResult, Python,
+    FromPyObject, IntoPyObjectExt, PyAny, PyResult, Python,
 };
 use redis::{FromRedisValue, RedisWrite, ToRedisArgs, Value};
 
@@ -54,7 +54,7 @@ impl From<Option<&Bound<'_, PyDict>>> for Codec {
     }
 }
 
-fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::ValueError> {
+fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<Py<PyAny>, error::ValueError> {
     match codec {
         Codec::String => Ok(String::from_utf8_lossy(&v).into_py_any(py)?),
         Codec::Float => Ok(String::from_utf8_lossy(&v)
@@ -90,7 +90,7 @@ fn _decode(py: Python, v: Vec<u8>, codec: Codec) -> Result<PyObject, error::Valu
     }
 }
 
-fn from_json(py: Python<'_>, v: serde_json::Value) -> Result<PyObject, error::ValueError> {
+fn from_json(py: Python<'_>, v: serde_json::Value) -> Result<Py<PyAny>, error::ValueError> {
     Ok(match v {
         serde_json::Value::Null => py.None(),
         serde_json::Value::Bool(b) => b.into_py_any(py)?,
@@ -121,7 +121,7 @@ fn from_json(py: Python<'_>, v: serde_json::Value) -> Result<PyObject, error::Va
     })
 }
 
-pub fn decode(py: Python, v: Vec<u8>, codec: Codec) -> PyObject {
+pub fn decode(py: Python, v: Vec<u8>, codec: Codec) -> Py<PyAny> {
     if let Ok(result) = _decode(py, v, codec) {
         result
     } else {
@@ -129,7 +129,7 @@ pub fn decode(py: Python, v: Vec<u8>, codec: Codec) -> PyObject {
     }
 }
 
-fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyResult<PyObject> {
+fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyResult<Py<PyAny>> {
     let result = match value {
         Value::BulkString(v) => decode(py, v, codec),
         Value::Nil => py.None(),
@@ -153,7 +153,7 @@ fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyResult<PyObject> {
     Ok(result)
 }
 
-pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<PyObject> {
+pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<Py<PyAny>> {
     if let Value::ServerError(err) = value {
         Err(error::RedisError::RedisError(err.into()))?
     } else {
