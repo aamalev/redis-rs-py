@@ -48,7 +48,7 @@ impl AsyncClientResult {
             .spawn(async move { cm.read().await.pool.execute(cmd, params).await })
             .await
             .unwrap()?;
-        Python::with_gil(|py| types::to_object(py, result, encoding))
+        Python::attach(|py| types::to_object(py, result, encoding))
     }
 
     pub async fn fetch_dict(&self, cmd: Cmd, params: Params) -> PyResult<Py<PyAny>> {
@@ -58,7 +58,7 @@ impl AsyncClientResult {
             .spawn(async move { cm.read().await.pool.execute(cmd, params).await })
             .await
             .unwrap()?;
-        Python::with_gil(|py| types::to_dict(py, result, encoding))
+        Python::attach(|py| types::to_dict(py, result, encoding))
     }
 
     pub async fn fetch<T>(&self, cmd: Cmd, params: Params) -> PyResult<T>
