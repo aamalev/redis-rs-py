@@ -54,6 +54,7 @@ impl From<RedisError> for redis::RedisError {
             RedisError::NotFoundNode => {
                 redis::RedisError::from((redis::ErrorKind::Io, "Not found node"))
             }
+            RedisError::NoSlot => redis::RedisError::from((redis::ErrorKind::Io, "Not found slot")),
             RedisError::PoolError(e) => e,
             RedisError::CommandError(_) => todo!(),
         }
