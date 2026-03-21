@@ -23,7 +23,7 @@ impl Node {
         let client = Client::open(info.clone())?;
         let mut cfg = ConnectionManagerConfig::new();
         if let Some(max_delay) = config.max_delay {
-            cfg = cfg.set_max_delay(max_delay);
+            cfg = cfg.set_max_delay(Duration::from_millis(max_delay));
         }
         let single = ConnectionManager::new_with_config(client, cfg).await?;
 

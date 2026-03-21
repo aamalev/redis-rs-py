@@ -53,15 +53,17 @@ fn create_client(
     let mut infos = vec![];
     for i in nodes.into_iter() {
         let mut info = i.into_connection_info().map_err(error::RedisError::from)?;
-        if password.is_some() {
-            info.redis.password = password.clone();
+        let mut redis_settings = info.redis_settings().clone();
+        if let Some(ref p) = password {
+            redis_settings = redis_settings.set_password(p);
         }
-        if username.is_some() {
-            info.redis.username = username.clone();
+        if let Some(ref u) = username {
+            redis_settings = redis_settings.set_username(u);
         }
-        if let Some(db) = db {
-            info.redis.db = db;
+        if let Some(d) = db {
+            redis_settings = redis_settings.set_db(d);
         }
+        info = info.set_redis_settings(redis_settings);
         infos.push(info);
     }
 

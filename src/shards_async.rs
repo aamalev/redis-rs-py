@@ -30,7 +30,7 @@ impl AsyncShards {
                 .nodes
                 .write()
                 .await
-                .insert(info.addr.to_string(), node);
+                .insert(info.addr().to_string(), node);
         }
 
         result.is_cluster = match is_cluster {
