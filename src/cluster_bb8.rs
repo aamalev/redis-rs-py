@@ -1,6 +1,6 @@
 use redis::{
     cluster::ClusterClient, cluster_async::ClusterConnection, ErrorKind, IntoConnectionInfo,
-    RedisError,
+    RedisError, ServerErrorKind,
 };
 
 pub struct ClusterManager {
@@ -29,7 +29,11 @@ impl bb8::ManageConnection for ClusterManager {
         let pong: String = redis::cmd("PING").query_async(conn).await?;
         match pong.as_str() {
             "PONG" => Ok(()),
-            _ => Err((ErrorKind::ResponseError, "ping request").into()),
+            _ => Err((
+                ErrorKind::Server(ServerErrorKind::ResponseError),
+                "ping request",
+            )
+                .into()),
         }
     }
 

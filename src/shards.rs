@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use redis::{ConnectionAddr, ConnectionInfo, FromRedisValue, RedisResult, Value};
+use redis::{ConnectionAddr, ConnectionInfo, FromRedisValue, ParsingError, RedisResult, Value};
 
 pub(crate) const SLOT_SIZE: u16 = 16384;
 
@@ -61,11 +61,12 @@ impl ShardNode {
                 }
             }
             ConnectionAddr::Unix(_) => ConnectionAddr::Unix(PathBuf::from(self.addr.as_str())),
+            _ => ConnectionAddr::Tcp(self.addr.as_str().to_string(), 0),
         }
     }
-    pub(crate) fn info_on(&self, mut info: ConnectionInfo) -> ConnectionInfo {
-        info.addr = self.addr_on(info.addr);
-        info
+    pub(crate) fn info_on(&self, info: ConnectionInfo) -> ConnectionInfo {
+        let addr = info.addr().clone();
+        info.set_addr(self.addr_on(addr))
     }
     fn split(&self) -> (String, u16) {
         if let Some((h, p)) = self.addr.split_once(':') {
@@ -123,7 +124,7 @@ pub(crate) struct Slots {
 
 impl Slots {
     pub fn set(&mut self, value: Value) -> RedisResult<()> {
-        let donor = Slots::from_redis_value(&value)?;
+        let donor = Slots::from_redis_value(value)?;
         for (id, sn) in donor.id_map.into_iter() {
             if !sn.addr.starts_with(':') {
                 self.id_map.insert(id, sn);
@@ -158,7 +159,7 @@ impl Slots {
 }
 
 impl FromRedisValue for Slots {
-    fn from_redis_value(v: &Value) -> RedisResult<Self> {
+    fn from_redis_value(v: Value) -> Result<Self, ParsingError> {
         if let Value::Array(v) = v {
             let mut id_map = HashMap::new();
             let m = v
@@ -169,7 +170,7 @@ impl FromRedisValue for Slots {
                         let _ = iter.next();
                         let n = iter
                             .next()
-                            .map(|x| u16::from_redis_value(x).unwrap_or_default())
+                            .map(|x| u16::from_redis_value(x.clone()).unwrap_or_default())
                             .unwrap_or_default();
                         let mut nodes: Vec<String> = iter
                             .filter_map(|v| {
@@ -239,7 +240,7 @@ mod tests {
                 Value::BulkString(b"123456789".to_vec()),
             ]),
         ])]);
-        let slots = Slots::from_redis_value(&cluster_slots).expect("Slots parse error");
+        let slots = Slots::from_redis_value(cluster_slots).expect("Slots parse error");
         let shard = Shard::from("1.2.3.4:6379");
         assert!(!slots.slots.is_empty(), "Slots is empty");
         assert_eq!(slots.slots.get(&2), Some(&shard));

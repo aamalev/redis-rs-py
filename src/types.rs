@@ -149,6 +149,7 @@ fn _to_dict(py: Python<'_>, value: Value, codec: Codec) -> PyResult<Py<PyAny>> {
         Value::BigNumber(_) => todo!(),
         Value::Push { kind: _, data: _ } => todo!(),
         Value::ServerError(err) => Err(error::RedisError::RedisError(err.into()))?,
+        _ => todo!(),
     };
     Ok(result)
 }
@@ -159,7 +160,7 @@ pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<Py<PyAny>> {
     } else {
         let result = PyDict::new(py);
         let map: HashMap<String, Value> =
-            FromRedisValue::from_redis_value(&value).unwrap_or_default();
+            FromRedisValue::from_redis_value(value.clone()).unwrap_or_default();
         if !map.is_empty() {
             for (k, value) in map.into_iter() {
                 let val = _to_dict(py, value, codec.clone())?;
@@ -175,7 +176,7 @@ pub fn to_dict(py: Python, value: Value, codec: Codec) -> PyResult<Py<PyAny>> {
             } else {
                 for (n, value) in v.into_iter().enumerate() {
                     let map: HashMap<String, Value> =
-                        FromRedisValue::from_redis_value(&value).unwrap_or_default();
+                        FromRedisValue::from_redis_value(value.clone()).unwrap_or_default();
                     if map.len() == 1 {
                         for (k, value) in map.into_iter() {
                             let val = _to_dict(py, value, codec.clone())?;
@@ -224,6 +225,7 @@ pub fn to_object(py: Python, value: Value, codec: Codec) -> PyResult<Py<PyAny>> 
         Value::BigNumber(_) => todo!(),
         Value::Push { kind: _, data: _ } => todo!(),
         Value::ServerError(err) => Err(error::RedisError::RedisError(err.into()))?,
+        _ => todo!(),
     };
     Ok(result)
 }

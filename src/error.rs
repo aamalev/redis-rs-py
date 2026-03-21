@@ -11,7 +11,7 @@ pub enum RedisError {
 impl RedisError {
     pub fn not_initialized() -> Self {
         Self::PoolError(redis::RedisError::from((
-            redis::ErrorKind::IoError,
+            redis::ErrorKind::Io,
             "Not initioalized pool",
         )))
     }
@@ -28,7 +28,7 @@ impl From<bb8::RunError<redis::RedisError>> for RedisError {
         match error {
             bb8::RunError::User(err) => RedisError::PoolError(err),
             bb8::RunError::TimedOut => RedisError::PoolError(redis::RedisError::from((
-                redis::ErrorKind::IoError,
+                redis::ErrorKind::Io,
                 "Timed out in bb8",
             ))),
         }
@@ -37,19 +37,13 @@ impl From<bb8::RunError<redis::RedisError>> for RedisError {
 
 impl From<tokio::sync::TryLockError> for RedisError {
     fn from(_e: tokio::sync::TryLockError) -> Self {
-        RedisError::PoolError(redis::RedisError::from((
-            redis::ErrorKind::IoError,
-            "Try leter",
-        )))
+        RedisError::PoolError(redis::RedisError::from((redis::ErrorKind::Io, "Try leter")))
     }
 }
 
 impl From<tokio::sync::AcquireError> for RedisError {
     fn from(_e: tokio::sync::AcquireError) -> Self {
-        RedisError::PoolError(redis::RedisError::from((
-            redis::ErrorKind::IoError,
-            "Try leter",
-        )))
+        RedisError::PoolError(redis::RedisError::from((redis::ErrorKind::Io, "Try leter")))
     }
 }
 
@@ -58,10 +52,7 @@ impl From<RedisError> for redis::RedisError {
         match e {
             RedisError::RedisError(e) => e,
             RedisError::NotFoundNode => {
-                redis::RedisError::from((redis::ErrorKind::IoError, "Not found node"))
-            }
-            RedisError::NoSlot => {
-                redis::RedisError::from((redis::ErrorKind::IoError, "Not found slot"))
+                redis::RedisError::from((redis::ErrorKind::Io, "Not found node"))
             }
             RedisError::PoolError(e) => e,
             RedisError::CommandError(_) => todo!(),

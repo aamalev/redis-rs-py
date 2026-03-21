@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use redis::{Cmd, FromRedisValue, Value};
+use redis::{Cmd, FromRedisValue};
 
 use crate::{
     client_async::Client,
@@ -42,7 +42,7 @@ impl PoolManager {
         let mut nodes = self.config.initial_nodes.clone();
         let ms = self.config.max_size;
         self.pool = if self.config.mock {
-            let db = nodes.first().map(|a| a.redis.db).unwrap_or(0);
+            let db = nodes.first().map(|a| a.redis_settings().db()).unwrap_or(0);
             Box::new(MockRedis::new(db).await?)
         } else if self.config.shards || self.config.cluster.is_none() {
             Box::new(AsyncShards::new(self.config.clone()).await?)
@@ -66,13 +66,13 @@ impl PoolManager {
             .initial_nodes
             .iter()
             .map(|s| {
-                if let Some(username) = s.redis.username.clone() {
-                    result.insert("username", redis::Value::SimpleString(username));
+                if let Some(username) = s.redis_settings().username() {
+                    result.insert("username", redis::Value::SimpleString(username.to_string()));
                 }
-                if s.redis.password.is_some() {
+                if s.redis_settings().password().is_some() {
                     result.insert("auth", redis::Value::Boolean(true));
                 }
-                redis::Value::SimpleString(s.addr.to_string())
+                redis::Value::SimpleString(s.addr().to_string())
             })
             .collect();
         result.insert("initial_nodes", redis::Value::Array(initial_nodes));
@@ -89,12 +89,9 @@ impl PoolManager {
         params: Params,
     ) -> Result<T, error::RedisError> {
         let value = self.pool.execute(cmd, params).await?;
-        if let Value::ServerError(err) = value {
-            Err(redis::RedisError::from(err))?
-        } else {
-            let result: T = FromRedisValue::from_redis_value(&value)?;
-            Ok(result)
-        }
+        let result: T = FromRedisValue::from_redis_value(value)
+            .map_err(|e| error::RedisError::RedisError(e.into()))?;
+        Ok(result)
     }
 }
 
