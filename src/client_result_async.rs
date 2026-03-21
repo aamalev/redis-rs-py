@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use pyo3::prelude::*;
+use pyo3::{prelude::*, IntoPyObjectExt};
 use redis::{Cmd, FromRedisValue, Value};
 
 use crate::{client_async::Client, command::Params, error, pool_manager::PoolManager, types};
@@ -54,11 +54,17 @@ impl AsyncClientResult {
     pub async fn fetch_dict(&self, cmd: Cmd, params: Params) -> PyResult<Py<PyAny>> {
         let cm = self.cm.clone();
         let encoding = params.codec.clone();
-        let result = tokio_rt()
+        let block = params.block;
+        let pool_result = tokio_rt()
             .spawn(async move { cm.read().await.pool.execute(cmd, params).await })
             .await
-            .unwrap()?;
-        Python::attach(|py| types::to_dict(py, result, encoding))
+            .unwrap();
+
+        match pool_result {
+            Ok(value) => Python::attach(|py| types::to_dict(py, value, encoding)),
+            Err(_) if block => Python::attach(|py| pyo3::types::PyDict::new(py).into_py_any(py)),
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub async fn fetch<T>(&self, cmd: Cmd, params: Params) -> PyResult<T>
