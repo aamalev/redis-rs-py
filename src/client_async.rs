@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use redis::streams::StreamReadOptions;
 use std::{collections::HashMap, num::NonZeroUsize};
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct Client {
     pub(crate) cr: AsyncClientResult,
