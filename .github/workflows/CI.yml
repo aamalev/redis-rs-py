@@ -40,7 +40,7 @@ jobs:
             target: ppc64le
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: 3.x
       - name: Install hatch
@@ -76,7 +76,7 @@ jobs:
             target: armv7
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: 3.x
       - name: Install hatch
@@ -106,7 +106,7 @@ jobs:
             target: x64
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
@@ -134,7 +134,7 @@ jobs:
             target: aarch64
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: 3.x
       - name: Install hatch
