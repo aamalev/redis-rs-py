@@ -37,8 +37,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
       - name: Install dependencies
-        run: pip install ruff mypy
+        run: python -m pip install --upgrade pip ruff mypy
       - name: Ruff check
         run: ruff check redis_rs tests
       - name: Ruff format
