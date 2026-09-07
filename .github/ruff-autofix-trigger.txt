@@ -1,0 +1,2 @@
+Triggered at: 2026-09-07T20:45:00Z
+This file was added to trigger the Ruff auto-fix workflow on branch 'fix/ruff-setup-python'.
